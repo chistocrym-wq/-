@@ -1,4 +1,4 @@
-const VERSION = 'otto-start-offline-v12';
+const VERSION = 'otto-start-offline-v13';
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const CORE = [
@@ -12,17 +12,14 @@ const CORE = [
   '/request-timeout-v7.js?v=8',
   '/pronunciation-v5.js?v=6',
   '/offline-v5.js?v=5',
-  '/otto-ui-experiment.js?v=3',
-  '/dom-stability-v4.js?v=4',
   '/learning-fixes-v4-guard.js?v=6',
   '/learning-fixes-v4.js?v=4',
   '/speech-preload-queue-v7.js?v=7',
+  '/course-data-v8.js?v=8',
   '/app-v2.js?v=2',
   '/enhancements-v2.js?v=2',
-  '/curriculum-stability-v6.js?v=6',
-  '/curriculum-corrections-v7.js?v=8',
-  '/offline-extra-v6.js?v=6',
-  '/standalone-tech-v6.js?v=9',
+  '/course-v8.js?v=8',
+  '/stability-v8.js?v=8',
   '/otto-icon-192.webp',
   '/otto/otto-guide.webp',
   '/otto/otto-home.webp',
@@ -81,7 +78,7 @@ async function cacheFirstWithRefresh(request) {
   const cached = await caches.match(request);
   const cache = await caches.open(RUNTIME_CACHE);
   if (cached) {
-    self.registration?.active && fetch(request).then((response) => {
+    fetch(request).then((response) => {
       if (response && response.ok) cache.put(request, response.clone());
     }).catch(() => {});
     return cached;
