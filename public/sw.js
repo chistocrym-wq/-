@@ -1,4 +1,4 @@
-const VERSION = 'otto-start-offline-v18';
+const VERSION = 'otto-start-offline-v19';
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const CORE = [
@@ -10,6 +10,7 @@ const CORE = [
   '/layout-fix-v3.css?v=3',
   '/learning-fixes-v4.css?v=4',
   '/client-log-v10.js?v=10',
+  '/mutation-safety-v10.js?v=10',
   '/request-timeout-v7.js?v=9',
   '/pronunciation-v5.js?v=6',
   '/offline-v5.js?v=5',
