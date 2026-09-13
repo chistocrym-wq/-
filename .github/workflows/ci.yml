@@ -27,15 +27,19 @@ jobs:
             public/index.html public/sw.js public/manifest.webmanifest \
             public/request-timeout-v7.js public/offline-v5.js public/pronunciation-v5.js \
             public/speech-preload-queue-v7.js public/course-data-v8.js public/course-v8.js \
-            public/stability-v8.js public/learning-fixes-v4-guard.js public/learning-fixes-v4.js \
-            public/app-v2.js public/enhancements-v2.js netlify/functions/otto-tts.js; do
+            public/text-stability-v8.js public/stability-v8.js public/account-v8.js \
+            public/learning-fixes-v4-guard.js public/learning-fixes-v4.js \
+            public/app-v2.js public/enhancements-v2.js \
+            netlify/functions/otto-tts.js netlify/functions/otto-start-auth.js; do
             test -f "$file" || { echo "Missing required file: $file"; exit 1; }
           done
           for file in \
             public/sw.js public/request-timeout-v7.js public/offline-v5.js public/pronunciation-v5.js \
             public/speech-preload-queue-v7.js public/course-data-v8.js public/course-v8.js \
-            public/stability-v8.js public/learning-fixes-v4-guard.js public/learning-fixes-v4.js \
-            public/app-v2.js public/enhancements-v2.js netlify/functions/otto-tts.js; do
+            public/text-stability-v8.js public/stability-v8.js public/account-v8.js \
+            public/learning-fixes-v4-guard.js public/learning-fixes-v4.js \
+            public/app-v2.js public/enhancements-v2.js \
+            netlify/functions/otto-tts.js netlify/functions/otto-start-auth.js; do
             echo "Syntax: $file"
             node --check "$file"
           done
@@ -43,13 +47,15 @@ jobs:
           const fs = require('fs');
           const index = fs.readFileSync('public/index.html','utf8');
           const data = fs.readFileSync('public/course-data-v8.js','utf8');
-          const requiredIndex = ['course-data-v8.js?v=8','course-v8.js?v=8','stability-v8.js?v=8','Otto Start','Немецкий с нуля'];
-          const requiredData = ["id:'family'","id:'numbers'","id:'documents'",'Großmutter','Dienstag','Sonntag','einundzwanzig','dreißig'];
-          for (const needle of requiredIndex) {
-            if (!index.includes(needle)) throw new Error(`index.html missing: ${needle}`);
-          }
-          for (const needle of requiredData) {
-            if (!data.includes(needle)) throw new Error(`course-data-v8.js missing: ${needle}`);
-          }
-          console.log('Cumulative curriculum assertions passed.');
+          const course = fs.readFileSync('public/course-v8.js','utf8');
+          const auth = fs.readFileSync('netlify/functions/otto-start-auth.js','utf8');
+          const requiredIndex = ['course-data-v8.js?v=8','course-v8.js?v=8','text-stability-v8.js?v=8','account-v8.js?v=8','stability-v8.js?v=8','Otto Start','немецкий с нуля'];
+          const requiredData = ["id:'family'","id:'numbers'","id:'documents'",'Großmutter','Dienstag','Sonntag','einundzwanzig','dreißig','der Bahnhof','die Schule','das Haus'];
+          const requiredCourse = ['Мои выражения','3–5 мин','7–10 мин','15 мин','ottoStartCourseV8'];
+          const requiredAuth = ['request-code','save-progress','load-progress','scrypt','RESEND_API_KEY','TWILIO_ACCOUNT_SID'];
+          for (const needle of requiredIndex) if (!index.includes(needle)) throw new Error(`index.html missing: ${needle}`);
+          for (const needle of requiredData) if (!data.includes(needle)) throw new Error(`course-data-v8.js missing: ${needle}`);
+          for (const needle of requiredCourse) if (!course.includes(needle)) throw new Error(`course-v8.js missing: ${needle}`);
+          for (const needle of requiredAuth) if (!auth.includes(needle)) throw new Error(`otto-start-auth.js missing: ${needle}`);
+          console.log('Otto Start cumulative curriculum, stability and account assertions passed.');
           NODE
