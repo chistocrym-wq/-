@@ -53,7 +53,16 @@
     });
   }
 
-  function patch(){patchShareButton();patchRouteCopy();void patchOfflineStatus()}
+  function patchRecoveryExclusions(){
+    document.querySelectorAll('#app .nav-item').forEach(el=>{
+      if(el.classList.contains('active'))el.dataset.v6Bypass='1';
+      else delete el.dataset.v6Bypass;
+    });
+    const repeatedMore=document.querySelector('#app .menu-grid')?.closest('.screen')?.querySelector('[data-go="more"]');
+    if(repeatedMore)repeatedMore.dataset.v6Bypass='1';
+  }
+
+  function patch(){patchShareButton();patchRouteCopy();patchRecoveryExclusions();void patchOfflineStatus()}
   let scheduled=false;
   function schedulePatch(){
     if(scheduled)return;
