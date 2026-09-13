@@ -25,23 +25,23 @@ jobs:
           set -e
           for file in \
             public/index.html public/sw.js public/manifest.webmanifest \
-            public/request-timeout-v7.js public/offline-v5.js public/pronunciation-v5.js \
+            public/client-log-v10.js public/request-timeout-v7.js public/offline-v5.js public/pronunciation-v5.js \
             public/speech-preload-queue-v7.js public/course-data-v8.js public/course-data-extra-v8.js public/course-data-core-v8.js \
             public/course-v8.js public/reading-coach-v9.js public/learning-cycle-guard-v9.js public/learning-cycle-v9.js \
             public/text-stability-v8.js public/stability-v8.js public/account-v8.js \
             public/learning-fixes-v4-guard.js public/learning-fixes-v4.js \
             public/app-v2.js public/enhancements-v2.js \
-            netlify/functions/otto-tts.js netlify/functions/otto-start-auth.js; do
+            netlify/functions/otto-tts.js netlify/functions/otto-start-auth.js netlify/functions/otto-start-client-log.js; do
             test -f "$file" || { echo "Missing required file: $file"; exit 1; }
           done
           for file in \
-            public/sw.js public/request-timeout-v7.js public/offline-v5.js public/pronunciation-v5.js \
+            public/sw.js public/client-log-v10.js public/request-timeout-v7.js public/offline-v5.js public/pronunciation-v5.js \
             public/speech-preload-queue-v7.js public/course-data-v8.js public/course-data-extra-v8.js public/course-data-core-v8.js \
             public/course-v8.js public/reading-coach-v9.js public/learning-cycle-guard-v9.js public/learning-cycle-v9.js \
             public/text-stability-v8.js public/stability-v8.js public/account-v8.js \
             public/learning-fixes-v4-guard.js public/learning-fixes-v4.js \
             public/app-v2.js public/enhancements-v2.js \
-            netlify/functions/otto-tts.js netlify/functions/otto-start-auth.js; do
+            netlify/functions/otto-tts.js netlify/functions/otto-start-auth.js netlify/functions/otto-start-client-log.js; do
             echo "Syntax: $file"
             node --check "$file"
           done
@@ -55,8 +55,11 @@ jobs:
           const reading = fs.readFileSync('public/reading-coach-v9.js','utf8');
           const cycle = fs.readFileSync('public/learning-cycle-v9.js','utf8');
           const cycleGuard = fs.readFileSync('public/learning-cycle-guard-v9.js','utf8');
+          const stability = fs.readFileSync('public/text-stability-v8.js','utf8');
+          const clientLog = fs.readFileSync('public/client-log-v10.js','utf8');
           const auth = fs.readFileSync('netlify/functions/otto-start-auth.js','utf8');
-          const requiredIndex = ['course-data-v8.js?v=8','course-data-extra-v8.js?v=8','course-data-core-v8.js?v=8','learning-cycle-guard-v9.js?v=9','learning-cycle-v9.js?v=9','course-v8.js?v=8','reading-coach-v9.js?v=9','account-v8.js?v=8','stability-v8.js?v=8','Otto Start','немецкий с нуля'];
+          const serverLog = fs.readFileSync('netlify/functions/otto-start-client-log.js','utf8');
+          const requiredIndex = ['client-log-v10.js?v=10','course-data-v8.js?v=8','course-data-extra-v8.js?v=8','course-data-core-v8.js?v=8','learning-cycle-guard-v9.js?v=9','learning-cycle-v9.js?v=9','course-v8.js?v=8','reading-coach-v9.js?v=9','account-v8.js?v=8','stability-v8.js?v=8','text-stability-v8.js?v=9','Otto Start','немецкий с нуля'];
           const requiredData = ["id:'family'","id:'numbers'","id:'documents'",'Großmutter','Dienstag','Sonntag','einundzwanzig','dreißig','der Bahnhof','die Schule','das Haus'];
           const requiredExtra = ["id:'daily-life'","id:'services'","id:'travel-hotel'","id:'environment'",'Briefmarke','Rezeption','aufstehen'];
           const requiredCore = ["id:'questions-actions'","id:'countries-languages'","id:'personal-things'",'können','Woher kommen Sie?','Muttersprache'];
@@ -65,6 +68,9 @@ jobs:
           const requiredCycle = ['Большое повторение','Переходный Mini‑A1','Hören','Lesen','Schreiben','Sprechen','data-v8-practice="use"','У вас есть необходимая базовая основа'];
           const requiredGuard = ['advanceUseSession','v9SpeakingAccepted','feedback.good'];
           const requiredAuth = ['request-code','save-progress','load-progress','scrypt','RESEND_API_KEY','TWILIO_ACCOUNT_SID'];
+          const requiredStability = ["Element.prototype, 'innerHTML'","Node.prototype, 'textContent'","if (html.get.call(this) === next) return"];
+          const requiredClientLog = ['event-loop-stall','dom-storm','stuck-click','/api/otto-start-client-log'];
+          const requiredServerLog = ['otto-start-client-errors-v1','OTTO_LOG_READ_TOKEN','store.list','store.setJSON'];
           for (const needle of requiredIndex) if (!index.includes(needle)) throw new Error(`index.html missing: ${needle}`);
           for (const needle of requiredData) if (!data.includes(needle)) throw new Error(`course-data-v8.js missing: ${needle}`);
           for (const needle of requiredExtra) if (!extra.includes(needle)) throw new Error(`course-data-extra-v8.js missing: ${needle}`);
@@ -74,6 +80,9 @@ jobs:
           for (const needle of requiredCycle) if (!cycle.includes(needle)) throw new Error(`learning-cycle-v9.js missing: ${needle}`);
           for (const needle of requiredGuard) if (!cycleGuard.includes(needle)) throw new Error(`learning-cycle-guard-v9.js missing: ${needle}`);
           for (const needle of requiredAuth) if (!auth.includes(needle)) throw new Error(`otto-start-auth.js missing: ${needle}`);
+          for (const needle of requiredStability) if (!stability.includes(needle)) throw new Error(`text-stability-v8.js missing: ${needle}`);
+          for (const needle of requiredClientLog) if (!clientLog.includes(needle)) throw new Error(`client-log-v10.js missing: ${needle}`);
+          for (const needle of requiredServerLog) if (!serverLog.includes(needle)) throw new Error(`otto-start-client-log.js missing: ${needle}`);
           if (index.includes('/otto-ui-experiment.js') || index.includes('/dom-stability-v4.js') || index.includes('/curriculum-stability-v6.js')) throw new Error('Conflict-prone legacy runtime module is loaded.');
           if (!(index.indexOf('learning-cycle-v9.js?v=9') < index.indexOf('course-v8.js?v=8'))) throw new Error('Learning cycle must register before course click handler.');
           console.log('Static learning-flow assertions passed.');
