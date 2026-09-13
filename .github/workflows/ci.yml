@@ -26,7 +26,7 @@ jobs:
           for file in \
             public/index.html public/sw.js public/manifest.webmanifest \
             public/request-timeout-v7.js public/offline-v5.js public/pronunciation-v5.js \
-            public/speech-preload-queue-v7.js public/course-data-v8.js public/course-data-extra-v8.js public/course-v8.js \
+            public/speech-preload-queue-v7.js public/course-data-v8.js public/course-data-extra-v8.js public/course-data-core-v8.js public/course-v8.js \
             public/text-stability-v8.js public/stability-v8.js public/account-v8.js \
             public/learning-fixes-v4-guard.js public/learning-fixes-v4.js \
             public/app-v2.js public/enhancements-v2.js \
@@ -35,7 +35,7 @@ jobs:
           done
           for file in \
             public/sw.js public/request-timeout-v7.js public/offline-v5.js public/pronunciation-v5.js \
-            public/speech-preload-queue-v7.js public/course-data-v8.js public/course-data-extra-v8.js public/course-v8.js \
+            public/speech-preload-queue-v7.js public/course-data-v8.js public/course-data-extra-v8.js public/course-data-core-v8.js public/course-v8.js \
             public/text-stability-v8.js public/stability-v8.js public/account-v8.js \
             public/learning-fixes-v4-guard.js public/learning-fixes-v4.js \
             public/app-v2.js public/enhancements-v2.js \
@@ -48,16 +48,19 @@ jobs:
           const index = fs.readFileSync('public/index.html','utf8');
           const data = fs.readFileSync('public/course-data-v8.js','utf8');
           const extra = fs.readFileSync('public/course-data-extra-v8.js','utf8');
+          const core = fs.readFileSync('public/course-data-core-v8.js','utf8');
           const course = fs.readFileSync('public/course-v8.js','utf8');
           const auth = fs.readFileSync('netlify/functions/otto-start-auth.js','utf8');
-          const requiredIndex = ['course-data-v8.js?v=8','course-data-extra-v8.js?v=8','course-v8.js?v=8','text-stability-v8.js?v=8','account-v8.js?v=8','stability-v8.js?v=8','Otto Start','немецкий с нуля'];
+          const requiredIndex = ['course-data-v8.js?v=8','course-data-extra-v8.js?v=8','course-data-core-v8.js?v=8','course-v8.js?v=8','text-stability-v8.js?v=8','account-v8.js?v=8','stability-v8.js?v=8','Otto Start','немецкий с нуля'];
           const requiredData = ["id:'family'","id:'numbers'","id:'documents'",'Großmutter','Dienstag','Sonntag','einundzwanzig','dreißig','der Bahnhof','die Schule','das Haus'];
           const requiredExtra = ["id:'daily-life'","id:'services'","id:'travel-hotel'","id:'environment'",'Briefmarke','Rezeption','aufstehen'];
+          const requiredCore = ["id:'questions-actions'","id:'countries-languages'","id:'personal-things'",'können','Woher kommen Sie?','Muttersprache'];
           const requiredCourse = ['Мои выражения','3–5 мин','7–10 мин','15 мин','ottoStartCourseV8'];
           const requiredAuth = ['request-code','save-progress','load-progress','scrypt','RESEND_API_KEY','TWILIO_ACCOUNT_SID'];
           for (const needle of requiredIndex) if (!index.includes(needle)) throw new Error(`index.html missing: ${needle}`);
           for (const needle of requiredData) if (!data.includes(needle)) throw new Error(`course-data-v8.js missing: ${needle}`);
           for (const needle of requiredExtra) if (!extra.includes(needle)) throw new Error(`course-data-extra-v8.js missing: ${needle}`);
+          for (const needle of requiredCore) if (!core.includes(needle)) throw new Error(`course-data-core-v8.js missing: ${needle}`);
           for (const needle of requiredCourse) if (!course.includes(needle)) throw new Error(`course-v8.js missing: ${needle}`);
           for (const needle of requiredAuth) if (!auth.includes(needle)) throw new Error(`otto-start-auth.js missing: ${needle}`);
           console.log('Static assertions passed.');
@@ -66,11 +69,12 @@ jobs:
           globalThis.window = {};
           await import('./public/course-data-v8.js');
           await import('./public/course-data-extra-v8.js');
+          await import('./public/course-data-core-v8.js');
           const d = window.OttoCourseDataV8;
           const words = d.allWords();
           const phrases = d.allPhrases();
           console.log(`Curriculum: ${d.topics.length} topics, ${words.length} word entries, ${phrases.length} expressions`);
-          if (d.topics.length < 21) throw new Error('Curriculum must contain at least 21 thematic blocks.');
-          if (words.length < 400) throw new Error(`Curriculum word coverage too small: ${words.length}`);
-          if (phrases.length < 80) throw new Error(`Expression coverage too small: ${phrases.length}`);
+          if (d.topics.length < 24) throw new Error('Curriculum must contain at least 24 thematic blocks.');
+          if (words.length < 500) throw new Error(`Curriculum word coverage too small: ${words.length}`);
+          if (phrases.length < 95) throw new Error(`Expression coverage too small: ${phrases.length}`);
           NODE
