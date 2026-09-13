@@ -5,7 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#416f71" />
   <meta name="description" content="Отто Старт — постепенный путь от полного нуля в немецком до готовности начать Otto A1" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Otto Start" />
   <title>Отто Старт — немецкий с нуля</title>
+  <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="icon" href="/otto-icon-192.webp" type="image/webp" />
   <link rel="preload" as="image" href="/otto/otto-home.webp" type="image/webp" />
   <link rel="stylesheet" href="/style-v2.css?v=2" />
@@ -15,6 +20,7 @@
 </head>
 <body>
   <div id="app" aria-live="polite"></div>
+  <script src="/offline-v5.js?v=5" defer></script>
   <script src="/otto-ui-experiment.js?v=3" defer></script>
   <script src="/dom-stability-v4.js?v=4" defer></script>
   <script src="/learning-fixes-v4-guard.js?v=4" defer></script>
