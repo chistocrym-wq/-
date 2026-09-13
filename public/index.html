@@ -32,7 +32,7 @@
   <div id="otto-splash-v8" aria-hidden="true"><div class="otto-splash-circle"><img src="/otto/otto-horen.webp" alt=""></div></div>
   <div id="app" aria-live="polite"></div>
 
-  <script src="/request-timeout-v7.js?v=8" defer></script>
+  <script src="/request-timeout-v7.js?v=9" defer></script>
   <script src="/pronunciation-v5.js?v=6" defer></script>
   <script src="/offline-v5.js?v=5" defer></script>
   <script src="/learning-fixes-v4-guard.js?v=6" defer></script>
@@ -41,14 +41,18 @@
   <script src="/course-data-v8.js?v=8" defer></script>
   <script src="/app-v2.js?v=2" defer></script>
   <script src="/enhancements-v2.js?v=2" defer></script>
+  <script src="/text-stability-v8.js?v=8" defer></script>
   <script src="/course-v8.js?v=8" defer></script>
+  <script src="/account-v8.js?v=8" defer></script>
   <script src="/stability-v8.js?v=8" defer></script>
   <script>
     (()=>{
       const splash=document.getElementById('otto-splash-v8');
       if(!splash)return;
       const started=performance.now();
+      let finished=false;
       const finish=()=>{
+        if(finished)return;finished=true;
         const wait=Math.max(0,620-(performance.now()-started));
         setTimeout(()=>{splash.classList.add('out');setTimeout(()=>splash.remove(),360)},wait);
       };
