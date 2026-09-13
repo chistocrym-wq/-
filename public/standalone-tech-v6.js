@@ -39,12 +39,28 @@
     }catch(_){ }
   }
 
+  function patchRouteCopy(){
+    const replacements=[
+      ['5 мин · назвать близких','5 мин · основные родственники'],
+      ['5 мин · узнавать и произносить основные числа','5 мин · все числа от 1 до 10'],
+      ['5 мин · услышать цену до 20','5 мин · все числа от 11 до 20'],
+      ['5 мин · понять Montag и Freitag','5 мин · все 7 дней недели']
+    ];
+    document.querySelectorAll('#app .lesson-row small').forEach(el=>{
+      let text=el.textContent||'';
+      for(const [from,to] of replacements){if(text.includes(from))text=text.replace(from,to)}
+      if(el.textContent!==text)el.textContent=text;
+    });
+  }
+
+  function patch(){patchShareButton();patchRouteCopy();void patchOfflineStatus()}
+
   document.addEventListener('click',e=>{
     const share=e.target.closest?.('[data-v6-share]');
     if(share){e.preventDefault();e.stopImmediatePropagation();void shareStandalone();return}
-    setTimeout(()=>{patchShareButton();void patchOfflineStatus()},80);
+    setTimeout(patch,80);
   },true);
 
-  patchShareButton();void patchOfflineStatus();
-  setInterval(()=>{patchShareButton();void patchOfflineStatus()},1800);
+  patch();
+  setInterval(patch,1800);
 })();
