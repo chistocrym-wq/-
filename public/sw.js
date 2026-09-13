@@ -1,4 +1,4 @@
-const VERSION = 'otto-start-offline-v15';
+const VERSION = 'otto-start-offline-v16';
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const CORE = [
@@ -17,6 +17,7 @@ const CORE = [
   '/speech-preload-queue-v7.js?v=7',
   '/course-data-v8.js?v=8',
   '/course-data-extra-v8.js?v=8',
+  '/course-data-core-v8.js?v=8',
   '/app-v2.js?v=2',
   '/enhancements-v2.js?v=2',
   '/text-stability-v8.js?v=8',
