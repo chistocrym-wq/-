@@ -1,4 +1,4 @@
-const VERSION = 'otto-start-offline-v9';
+const VERSION = 'otto-start-offline-v10';
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const CORE = [
@@ -9,6 +9,7 @@ const CORE = [
   '/premium-v3.css?v=3',
   '/layout-fix-v3.css?v=3',
   '/learning-fixes-v4.css?v=4',
+  '/request-timeout-v7.js?v=7',
   '/pronunciation-v5.js?v=6',
   '/offline-v5.js?v=5',
   '/otto-ui-experiment.js?v=3',
@@ -20,7 +21,7 @@ const CORE = [
   '/curriculum-stability-v6.js?v=6',
   '/curriculum-corrections-v7.js?v=7',
   '/offline-extra-v6.js?v=6',
-  '/standalone-tech-v6.js?v=8',
+  '/standalone-tech-v6.js?v=9',
   '/otto-icon-192.webp',
   '/otto/otto-guide.webp',
   '/otto/otto-home.webp',
