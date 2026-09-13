@@ -20,45 +20,46 @@ jobs:
         run: npm install
       - name: Build
         run: npm run build
-      - name: Validate Otto Start offline, pronunciation, stability and curriculum bundle
+      - name: Validate Otto Start stable cumulative bundle
         run: |
           test -f public/index.html
           test -f public/sw.js
           test -f public/manifest.webmanifest
           test -f public/request-timeout-v7.js
           test -f public/offline-v5.js
-          test -f public/offline-extra-v6.js
           test -f public/pronunciation-v5.js
           test -f public/speech-preload-queue-v7.js
-          test -f public/curriculum-stability-v6.js
-          test -f public/curriculum-corrections-v7.js
-          test -f public/standalone-tech-v6.js
+          test -f public/course-data-v8.js
+          test -f public/course-v8.js
+          test -f public/stability-v8.js
           test -f public/learning-fixes-v4-guard.js
+          test -f public/learning-fixes-v4.js
+          test -f public/app-v2.js
+          test -f public/enhancements-v2.js
           test -f netlify/functions/otto-tts.js
           node --check public/sw.js
           node --check public/request-timeout-v7.js
           node --check public/offline-v5.js
-          node --check public/offline-extra-v6.js
           node --check public/pronunciation-v5.js
           node --check public/speech-preload-queue-v7.js
-          node --check public/curriculum-stability-v6.js
-          node --check public/curriculum-corrections-v7.js
-          node --check public/standalone-tech-v6.js
+          node --check public/course-data-v8.js
+          node --check public/course-v8.js
+          node --check public/stability-v8.js
           node --check public/learning-fixes-v4-guard.js
           node --check public/learning-fixes-v4.js
           node --check public/app-v2.js
           node --check public/enhancements-v2.js
           node --check netlify/functions/otto-tts.js
-          grep -q "die Großmutter / Oma" public/curriculum-stability-v6.js
-          grep -q "die Tochter" public/curriculum-stability-v6.js
-          grep -q "Dienstag" public/curriculum-stability-v6.js
-          grep -q "Sonntag" public/curriculum-stability-v6.js
-          grep -q "neunzehn" public/curriculum-stability-v6.js
-          grep -q "zwanzig" public/curriculum-stability-v6.js
-          grep -q "NUM_1_10" public/curriculum-corrections-v7.js
-          grep -q "NUM_11_20" public/curriculum-corrections-v7.js
-          grep -q "request-timeout-v7.js?v=8" public/index.html
-          grep -q "speech-preload-queue-v7.js?v=7" public/index.html
-          grep -q "offline-extra-v6.js?v=6" public/index.html
-          grep -q "curriculum-corrections-v7.js?v=8" public/index.html
-          grep -q "standalone-tech-v6.js?v=9" public/index.html
+          grep -q "course-data-v8.js?v=8" public/index.html
+          grep -q "course-v8.js?v=8" public/index.html
+          grep -q "stability-v8.js?v=8" public/index.html
+          grep -q "Otto Start" public/index.html
+          grep -q "Немецкий с нуля" public/index.html
+          grep -q "id:'family'" public/course-data-v8.js
+          grep -q "id:'numbers'" public/course-data-v8.js
+          grep -q "id:'documents'" public/course-data-v8.js
+          grep -q "Großmutter" public/course-data-v8.js
+          grep -q "Dienstag" public/course-data-v8.js
+          grep -q "Sonntag" public/course-data-v8.js
+          grep -q "einundzwanzig" public/course-data-v8.js
+          grep -q "dreißig" public/course-data-v8.js
