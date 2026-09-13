@@ -3,10 +3,6 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "scripts": {
-    "build": "node -e \"console.log('Otto Start static build ready')\""
-  },
-  "dependencies": {
-    "@netlify/blobs": "^11.0.3"
-  }
+  "scripts": {"build": "node -e \"console.log('Otto Start static build ready')\""},
+  "dependencies": {"@netlify/blobs": "^11.0.3"}
 }
