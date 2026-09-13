@@ -1,5 +1,5 @@
 # Otto Start
 
-Standalone application for learning German from absolute zero before the main Otto A1 trainer.
+Самостоятельное приложение «Отто Старт» — немецкий с абсолютного нуля до готовности перейти в основной Otto A1.
 
-This repository is intentionally separated from the main Otto A1 application. The main trainer remains at https://otto-a1-new.netlify.app/.
+Этот репозиторий отделён от основного тренажёра Otto A1. Все дальнейшие изменения Otto Start должны выполняться здесь.

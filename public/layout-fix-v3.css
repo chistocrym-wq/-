@@ -1,0 +1,10 @@
+/* Reserve bottom navigation space only on screens that actually render the fixed nav. */
+.phone:not(:has(.bottom-nav)) {
+  padding-bottom: 0 !important;
+}
+
+@media (min-width: 700px) {
+  .phone:not(:has(.bottom-nav)) {
+    min-height: calc(100dvh - 36px);
+  }
+}
