@@ -9,6 +9,7 @@
     '/api/otto-tts':12000,
     '/api/otto-start-pronunciation':22000,
     '/api/otto-start-support':15000,
+    '/api/otto-start-auth':20000,
     '/api/translate-task':12000
   };
 
