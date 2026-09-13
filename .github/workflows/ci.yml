@@ -22,44 +22,34 @@ jobs:
         run: npm run build
       - name: Validate Otto Start stable cumulative bundle
         run: |
-          test -f public/index.html
-          test -f public/sw.js
-          test -f public/manifest.webmanifest
-          test -f public/request-timeout-v7.js
-          test -f public/offline-v5.js
-          test -f public/pronunciation-v5.js
-          test -f public/speech-preload-queue-v7.js
-          test -f public/course-data-v8.js
-          test -f public/course-v8.js
-          test -f public/stability-v8.js
-          test -f public/learning-fixes-v4-guard.js
-          test -f public/learning-fixes-v4.js
-          test -f public/app-v2.js
-          test -f public/enhancements-v2.js
-          test -f netlify/functions/otto-tts.js
-          node --check public/sw.js
-          node --check public/request-timeout-v7.js
-          node --check public/offline-v5.js
-          node --check public/pronunciation-v5.js
-          node --check public/speech-preload-queue-v7.js
-          node --check public/course-data-v8.js
-          node --check public/course-v8.js
-          node --check public/stability-v8.js
-          node --check public/learning-fixes-v4-guard.js
-          node --check public/learning-fixes-v4.js
-          node --check public/app-v2.js
-          node --check public/enhancements-v2.js
-          node --check netlify/functions/otto-tts.js
-          grep -q "course-data-v8.js?v=8" public/index.html
-          grep -q "course-v8.js?v=8" public/index.html
-          grep -q "stability-v8.js?v=8" public/index.html
-          grep -q "Otto Start" public/index.html
-          grep -q "Немецкий с нуля" public/index.html
-          grep -q "id:'family'" public/course-data-v8.js
-          grep -q "id:'numbers'" public/course-data-v8.js
-          grep -q "id:'documents'" public/course-data-v8.js
-          grep -q "Großmutter" public/course-data-v8.js
-          grep -q "Dienstag" public/course-data-v8.js
-          grep -q "Sonntag" public/course-data-v8.js
-          grep -q "einundzwanzig" public/course-data-v8.js
-          grep -q "dreißig" public/course-data-v8.js
+          set -e
+          for file in \
+            public/index.html public/sw.js public/manifest.webmanifest \
+            public/request-timeout-v7.js public/offline-v5.js public/pronunciation-v5.js \
+            public/speech-preload-queue-v7.js public/course-data-v8.js public/course-v8.js \
+            public/stability-v8.js public/learning-fixes-v4-guard.js public/learning-fixes-v4.js \
+            public/app-v2.js public/enhancements-v2.js netlify/functions/otto-tts.js; do
+            test -f "$file" || { echo "Missing required file: $file"; exit 1; }
+          done
+          for file in \
+            public/sw.js public/request-timeout-v7.js public/offline-v5.js public/pronunciation-v5.js \
+            public/speech-preload-queue-v7.js public/course-data-v8.js public/course-v8.js \
+            public/stability-v8.js public/learning-fixes-v4-guard.js public/learning-fixes-v4.js \
+            public/app-v2.js public/enhancements-v2.js netlify/functions/otto-tts.js; do
+            echo "Syntax: $file"
+            node --check "$file"
+          done
+          node <<'NODE'
+          const fs = require('fs');
+          const index = fs.readFileSync('public/index.html','utf8');
+          const data = fs.readFileSync('public/course-data-v8.js','utf8');
+          const requiredIndex = ['course-data-v8.js?v=8','course-v8.js?v=8','stability-v8.js?v=8','Otto Start','Немецкий с нуля'];
+          const requiredData = ["id:'family'","id:'numbers'","id:'documents'",'Großmutter','Dienstag','Sonntag','einundzwanzig','dreißig'];
+          for (const needle of requiredIndex) {
+            if (!index.includes(needle)) throw new Error(`index.html missing: ${needle}`);
+          }
+          for (const needle of requiredData) {
+            if (!data.includes(needle)) throw new Error(`course-data-v8.js missing: ${needle}`);
+          }
+          console.log('Cumulative curriculum assertions passed.');
+          NODE
