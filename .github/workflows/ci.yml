@@ -55,7 +55,7 @@ jobs:
           grep -q "zwanzig" public/curriculum-stability-v6.js
           grep -q "NUM_1_10" public/curriculum-corrections-v7.js
           grep -q "NUM_11_20" public/curriculum-corrections-v7.js
-          grep -q "request-timeout-v7.js?v=7" public/index.html
+          grep -q "request-timeout-v7.js?v=8" public/index.html
           grep -q "offline-extra-v6.js?v=6" public/index.html
           grep -q "curriculum-corrections-v7.js?v=7" public/index.html
           grep -q "standalone-tech-v6.js?v=9" public/index.html
