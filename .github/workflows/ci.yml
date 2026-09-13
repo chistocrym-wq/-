@@ -29,6 +29,7 @@ jobs:
           test -f public/offline-extra-v6.js
           test -f public/pronunciation-v5.js
           test -f public/curriculum-stability-v6.js
+          test -f public/curriculum-corrections-v7.js
           test -f public/standalone-tech-v6.js
           test -f public/learning-fixes-v4-guard.js
           test -f netlify/functions/otto-tts.js
@@ -37,6 +38,7 @@ jobs:
           node --check public/offline-extra-v6.js
           node --check public/pronunciation-v5.js
           node --check public/curriculum-stability-v6.js
+          node --check public/curriculum-corrections-v7.js
           node --check public/standalone-tech-v6.js
           node --check public/learning-fixes-v4-guard.js
           node --check public/learning-fixes-v4.js
@@ -49,5 +51,8 @@ jobs:
           grep -q "Sonntag" public/curriculum-stability-v6.js
           grep -q "neunzehn" public/curriculum-stability-v6.js
           grep -q "zwanzig" public/curriculum-stability-v6.js
-          grep -q "offline-extra-v6.js" public/index.html
-          grep -q "standalone-tech-v6.js?v=7" public/index.html
+          grep -q "NUM_1_10" public/curriculum-corrections-v7.js
+          grep -q "NUM_11_20" public/curriculum-corrections-v7.js
+          grep -q "offline-extra-v6.js?v=6" public/index.html
+          grep -q "curriculum-corrections-v7.js?v=7" public/index.html
+          grep -q "standalone-tech-v6.js?v=8" public/index.html
