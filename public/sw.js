@@ -1,4 +1,4 @@
-const VERSION = 'otto-start-offline-v7';
+const VERSION = 'otto-start-offline-v8';
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const CORE = [
@@ -18,6 +18,7 @@ const CORE = [
   '/app-v2.js?v=2',
   '/enhancements-v2.js?v=2',
   '/curriculum-stability-v6.js?v=6',
+  '/offline-extra-v6.js?v=6',
   '/standalone-tech-v6.js?v=7',
   '/otto-icon-192.webp',
   '/otto/otto-guide.webp',
