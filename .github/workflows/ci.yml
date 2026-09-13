@@ -20,13 +20,14 @@ jobs:
         run: npm install
       - name: Build
         run: npm run build
-      - name: Validate Otto Start stable cumulative bundle
+      - name: Validate Otto Start cumulative learning bundle
         run: |
           set -e
           for file in \
             public/index.html public/sw.js public/manifest.webmanifest \
             public/request-timeout-v7.js public/offline-v5.js public/pronunciation-v5.js \
-            public/speech-preload-queue-v7.js public/course-data-v8.js public/course-data-extra-v8.js public/course-data-core-v8.js public/course-v8.js \
+            public/speech-preload-queue-v7.js public/course-data-v8.js public/course-data-extra-v8.js public/course-data-core-v8.js \
+            public/course-v8.js public/reading-coach-v9.js public/learning-cycle-guard-v9.js public/learning-cycle-v9.js \
             public/text-stability-v8.js public/stability-v8.js public/account-v8.js \
             public/learning-fixes-v4-guard.js public/learning-fixes-v4.js \
             public/app-v2.js public/enhancements-v2.js \
@@ -35,7 +36,8 @@ jobs:
           done
           for file in \
             public/sw.js public/request-timeout-v7.js public/offline-v5.js public/pronunciation-v5.js \
-            public/speech-preload-queue-v7.js public/course-data-v8.js public/course-data-extra-v8.js public/course-data-core-v8.js public/course-v8.js \
+            public/speech-preload-queue-v7.js public/course-data-v8.js public/course-data-extra-v8.js public/course-data-core-v8.js \
+            public/course-v8.js public/reading-coach-v9.js public/learning-cycle-guard-v9.js public/learning-cycle-v9.js \
             public/text-stability-v8.js public/stability-v8.js public/account-v8.js \
             public/learning-fixes-v4-guard.js public/learning-fixes-v4.js \
             public/app-v2.js public/enhancements-v2.js \
@@ -50,20 +52,31 @@ jobs:
           const extra = fs.readFileSync('public/course-data-extra-v8.js','utf8');
           const core = fs.readFileSync('public/course-data-core-v8.js','utf8');
           const course = fs.readFileSync('public/course-v8.js','utf8');
+          const reading = fs.readFileSync('public/reading-coach-v9.js','utf8');
+          const cycle = fs.readFileSync('public/learning-cycle-v9.js','utf8');
+          const cycleGuard = fs.readFileSync('public/learning-cycle-guard-v9.js','utf8');
           const auth = fs.readFileSync('netlify/functions/otto-start-auth.js','utf8');
-          const requiredIndex = ['course-data-v8.js?v=8','course-data-extra-v8.js?v=8','course-data-core-v8.js?v=8','course-v8.js?v=8','text-stability-v8.js?v=8','account-v8.js?v=8','stability-v8.js?v=8','Otto Start','немецкий с нуля'];
+          const requiredIndex = ['course-data-v8.js?v=8','course-data-extra-v8.js?v=8','course-data-core-v8.js?v=8','learning-cycle-guard-v9.js?v=9','learning-cycle-v9.js?v=9','course-v8.js?v=8','reading-coach-v9.js?v=9','account-v8.js?v=8','stability-v8.js?v=8','Otto Start','немецкий с нуля'];
           const requiredData = ["id:'family'","id:'numbers'","id:'documents'",'Großmutter','Dienstag','Sonntag','einundzwanzig','dreißig','der Bahnhof','die Schule','das Haus'];
           const requiredExtra = ["id:'daily-life'","id:'services'","id:'travel-hotel'","id:'environment'",'Briefmarke','Rezeption','aufstehen'];
           const requiredCore = ["id:'questions-actions'","id:'countries-languages'","id:'personal-things'",'können','Woher kommen Sie?','Muttersprache'];
-          const requiredCourse = ['Мои выражения','3–5 мин','7–10 мин','15 мин','ottoStartCourseV8'];
+          const requiredCourse = ['Мои выражения','3–5 мин','7–10 мин','15 мин','ottoStartCourseV8','spaced'];
+          const requiredReading = ['Почему так читается?','soft-ch','hard-ch','final-e','v9-reading-gate'];
+          const requiredCycle = ['Большое повторение','Переходный Mini‑A1','Hören','Lesen','Schreiben','Sprechen','data-v8-practice="use"','У вас есть необходимая базовая основа'];
+          const requiredGuard = ['advanceUseSession','v9SpeakingAccepted','feedback.good'];
           const requiredAuth = ['request-code','save-progress','load-progress','scrypt','RESEND_API_KEY','TWILIO_ACCOUNT_SID'];
           for (const needle of requiredIndex) if (!index.includes(needle)) throw new Error(`index.html missing: ${needle}`);
           for (const needle of requiredData) if (!data.includes(needle)) throw new Error(`course-data-v8.js missing: ${needle}`);
           for (const needle of requiredExtra) if (!extra.includes(needle)) throw new Error(`course-data-extra-v8.js missing: ${needle}`);
           for (const needle of requiredCore) if (!core.includes(needle)) throw new Error(`course-data-core-v8.js missing: ${needle}`);
           for (const needle of requiredCourse) if (!course.includes(needle)) throw new Error(`course-v8.js missing: ${needle}`);
+          for (const needle of requiredReading) if (!reading.includes(needle)) throw new Error(`reading-coach-v9.js missing: ${needle}`);
+          for (const needle of requiredCycle) if (!cycle.includes(needle)) throw new Error(`learning-cycle-v9.js missing: ${needle}`);
+          for (const needle of requiredGuard) if (!cycleGuard.includes(needle)) throw new Error(`learning-cycle-guard-v9.js missing: ${needle}`);
           for (const needle of requiredAuth) if (!auth.includes(needle)) throw new Error(`otto-start-auth.js missing: ${needle}`);
-          console.log('Static assertions passed.');
+          if (index.includes('/otto-ui-experiment.js') || index.includes('/dom-stability-v4.js') || index.includes('/curriculum-stability-v6.js')) throw new Error('Conflict-prone legacy runtime module is loaded.');
+          if (!(index.indexOf('learning-cycle-v9.js?v=9') < index.indexOf('course-v8.js?v=8'))) throw new Error('Learning cycle must register before course click handler.');
+          console.log('Static learning-flow assertions passed.');
           NODE
           node --input-type=module <<'NODE'
           globalThis.window = {};
@@ -77,4 +90,11 @@ jobs:
           if (d.topics.length < 24) throw new Error('Curriculum must contain at least 24 thematic blocks.');
           if (words.length < 500) throw new Error(`Curriculum word coverage too small: ${words.length}`);
           if (phrases.length < 95) throw new Error(`Expression coverage too small: ${phrases.length}`);
+          const requiredTopicIds=['start','person','alphabet','numbers','family','time','food','shopping','home','city','transport','work','free-time','health','weather','german','documents','daily-life','services','travel-hotel','environment','questions-actions','countries-languages','personal-things'];
+          for(const id of requiredTopicIds) if(!d.topic(id)) throw new Error(`Missing topic: ${id}`);
+          const family=d.topic('family');
+          for(const needle of ['Mutter','Vater','Sohn','Tochter','Bruder','Schwester','Oma','Opa','Tante','Onkel']) if(!family.words.some(x=>x.de.includes(needle))) throw new Error(`Family coverage missing ${needle}`);
+          const time=d.topic('time');
+          for(const day of ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag']) if(!time.words.some(x=>x.de.includes(day))) throw new Error(`Weekday missing ${day}`);
+          console.log('Curriculum coverage assertions passed.');
           NODE
