@@ -28,17 +28,22 @@ jobs:
           test -f public/offline-v5.js
           test -f public/pronunciation-v5.js
           test -f public/curriculum-stability-v6.js
+          test -f public/standalone-tech-v6.js
           test -f public/learning-fixes-v4-guard.js
           test -f netlify/functions/otto-tts.js
           node --check public/sw.js
           node --check public/offline-v5.js
           node --check public/pronunciation-v5.js
           node --check public/curriculum-stability-v6.js
+          node --check public/standalone-tech-v6.js
           node --check public/learning-fixes-v4-guard.js
           node --check public/learning-fixes-v4.js
           node --check public/app-v2.js
           node --check public/enhancements-v2.js
           node --check netlify/functions/otto-tts.js
           grep -q "die Großmutter / Oma" public/curriculum-stability-v6.js
+          grep -q "die Tochter" public/curriculum-stability-v6.js
           grep -q "Dienstag" public/curriculum-stability-v6.js
+          grep -q "Sonntag" public/curriculum-stability-v6.js
           grep -q "neunzehn" public/curriculum-stability-v6.js
+          grep -q "zwanzig" public/curriculum-stability-v6.js
