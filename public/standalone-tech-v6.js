@@ -54,13 +54,21 @@
   }
 
   function patch(){patchShareButton();patchRouteCopy();void patchOfflineStatus()}
+  let scheduled=false;
+  function schedulePatch(){
+    if(scheduled)return;
+    scheduled=true;
+    requestAnimationFrame(()=>{scheduled=false;patch()});
+  }
 
   document.addEventListener('click',e=>{
     const share=e.target.closest?.('[data-v6-share]');
     if(share){e.preventDefault();e.stopImmediatePropagation();void shareStandalone();return}
-    setTimeout(patch,80);
+    schedulePatch();
   },true);
 
+  const app=document.getElementById('app');
+  if(app)new MutationObserver(schedulePatch).observe(app,{childList:true,subtree:true});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)schedulePatch()});
   patch();
-  setInterval(patch,1800);
 })();
