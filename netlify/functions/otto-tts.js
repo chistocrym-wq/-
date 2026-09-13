@@ -2,8 +2,9 @@ import { createHash } from 'node:crypto';
 import { getDeployStore, getStore } from '@netlify/blobs';
 
 const MODEL = 'gpt-4o-mini-tts-2025-12-15';
-const VOICE = 'cedar';
-const STORE = 'otto-tts-cache-v1';
+const VOICE = 'marin';
+const STORE = 'otto-tts-cache-de-v2';
+const PRONUNCIATION_VERSION = 'de-DE-hochdeutsch-v2';
 const MAX_TEXT_LENGTH = 420;
 
 function json(data, status = 200, headers = {}) {
@@ -18,17 +19,27 @@ function cacheStore() {
   return isProduction ? getStore(STORE) : getDeployStore(STORE);
 }
 
-function speechInstructions(mode) {
+function isGermanLetter(text) {
+  return /^[A-ZÄÖÜẞß]$/iu.test(String(text || '').trim());
+}
+
+function speechInstructions(mode, kind) {
   const pace = mode === 'slow'
-    ? 'Speak slightly slower than normal conversational German, with natural phrasing. Do not stretch individual phonemes or sound robotic.'
-    : 'Speak at a calm, natural conversational pace for an adult beginner.';
+    ? 'Sprich nur etwas langsamer als normales Hochdeutsch. Dehne keine Laute künstlich und zerlege Wörter nicht unnatürlich.'
+    : 'Sprich in ruhigem, natürlichem Tempo.';
+
+  const letterRule = kind === 'letter'
+    ? 'Der Text ist ein einzelner Buchstabe. Sprich ausschließlich den DEUTSCHEN Buchstabennamen, niemals den englischen. Beispiele zur Aussprache: J = Jot, V = Vau, W = Weh, Y = Ypsilon, Z = Zett, ß = Eszett. Füge keine Erklärung hinzu.'
+    : 'Lies jedes Wort als deutsches Wort im Kontext der deutschen Standardsprache. Auch internationale Wörter und Lehnwörter müssen deutsch ausgesprochen werden, z. B. Ticket, Bus, Sport, Euro, Termin und Café — nicht englisch.';
 
   return [
-    'Speak only the supplied German text.',
-    'Use native Standard German (Hochdeutsch) pronunciation.',
-    'Sound like a warm, composed, friendly adult German teacher: clear, trustworthy, patient and natural.',
-    'Keep articulation precise but never theatrical, sing-song, childish or advertising-like.',
-    'Pronounce German phonology natively, especially ch, sch, r, ü, ö, ä, ei, ie, eu, z, sp and st.',
+    'Sprich ausschließlich den gelieferten Text.',
+    'Sprache und Aussprache: Deutsch (Deutschland), Standarddeutsch/Hochdeutsch, de-DE.',
+    'Kein englischer Akzent, keine englischen Buchstabennamen und keine englische Aussprache einzelner Wörter.',
+    'Sprich wie eine muttersprachliche, ruhige Deutschlehrkraft aus Deutschland.',
+    'Artikuliere natürlich und korrekt: ich-Laut [ç] in ich/mich/Milch, sch [ʃ], z [ts], w [v], j [j], ei [aɪ̯], ie [iː], eu/äu [ɔʏ̯], sp/st am Wortanfang [ʃp]/[ʃt], sowie ä/ö/ü und deutsches r.',
+    'Bei Endungen -e und -er keine russische oder englische Überartikulation: schwaches deutsches Schwa bzw. reduzierte Endung verwenden.',
+    letterRule,
     pace,
   ].join(' ');
 }
@@ -43,12 +54,13 @@ export default async (req) => {
   const body = await req.json().catch(() => ({}));
   const text = String(body.text || '').trim();
   const mode = body.mode === 'slow' ? 'slow' : 'normal';
+  const kind = body.kind === 'letter' || isGermanLetter(text) ? 'letter' : 'text';
 
   if (!text) return json({ error: 'Text is required.' }, 400);
   if (text.length > MAX_TEXT_LENGTH) return json({ error: 'Text is too long.' }, 413);
 
-  const speed = mode === 'slow' ? 0.86 : 0.98;
-  const fingerprint = JSON.stringify({ model: MODEL, voice: VOICE, mode, speed, text });
+  const speed = mode === 'slow' ? 0.92 : 1.0;
+  const fingerprint = JSON.stringify({ pronunciationVersion: PRONUNCIATION_VERSION, model: MODEL, voice: VOICE, kind, mode, speed, text });
   const key = createHash('sha256').update(fingerprint).digest('hex');
   const store = cacheStore();
 
@@ -60,6 +72,7 @@ export default async (req) => {
           'Content-Type': 'audio/mpeg',
           'Cache-Control': 'public, max-age=31536000, immutable',
           'X-Otto-TTS': 'cache',
+          'X-Otto-Pronunciation': PRONUNCIATION_VERSION,
         },
       });
     }
@@ -78,7 +91,7 @@ export default async (req) => {
         model: MODEL,
         voice: VOICE,
         input: text,
-        instructions: speechInstructions(mode),
+        instructions: speechInstructions(mode, kind),
         response_format: 'mp3',
         speed,
       }),
@@ -102,6 +115,7 @@ export default async (req) => {
         'Content-Type': 'audio/mpeg',
         'Cache-Control': 'public, max-age=31536000, immutable',
         'X-Otto-TTS': 'generated',
+        'X-Otto-Pronunciation': PRONUNCIATION_VERSION,
       },
     });
   } catch (error) {
