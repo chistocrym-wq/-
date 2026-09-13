@@ -1,4 +1,4 @@
-const VERSION = 'otto-start-offline-v5';
+const VERSION = 'otto-start-offline-v6';
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const CORE = [
@@ -13,10 +13,11 @@ const CORE = [
   '/offline-v5.js?v=5',
   '/otto-ui-experiment.js?v=3',
   '/dom-stability-v4.js?v=4',
-  '/learning-fixes-v4-guard.js?v=4',
+  '/learning-fixes-v4-guard.js?v=6',
   '/learning-fixes-v4.js?v=4',
   '/app-v2.js?v=2',
   '/enhancements-v2.js?v=2',
+  '/curriculum-stability-v6.js?v=6',
   '/otto-icon-192.webp',
   '/otto/otto-guide.webp',
   '/otto/otto-home.webp',
