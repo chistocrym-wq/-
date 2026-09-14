@@ -69,8 +69,8 @@ jobs:
           if (speech.includes("fetch('/api/otto-tts'")) throw new Error('audio must not wait for fetch before play');
           if (!speech.includes('getUserMedia') || !speech.includes('MediaRecorder') || !speech.includes('/api/otto-start-pronunciation')) throw new Error('real recording pipeline missing');
           if (!tts.includes("req.method === 'GET'") || (!tts.includes('URLSearchParams') && !tts.includes('searchParams'))) throw new Error('GET TTS playback route missing');
-          if (!tts.includes('otto-tts-cache-de-v6') || !tts.includes('de-DE-hochdeutsch-v6')) throw new Error('German TTS v6 missing');
-          if (!tts.includes('gemini-3.1-flash-tts-preview') || !tts.includes('pcmToWav') || !tts.includes('isWav')) throw new Error('verified WAV synthesis missing');
+          if (!tts.includes('otto-tts-cache-de-v7') || !tts.includes('de-DE-hochdeutsch-v7')) throw new Error('German TTS v7 missing');
+          if (!tts.includes('gpt-4o-mini-tts') || !tts.includes('gemini-3.1-flash-tts-preview') || !tts.includes('pcmToWav') || !tts.includes('isWav')) throw new Error('validated TTS providers missing');
           if (!tts.includes('Standarddeutsch/Hochdeutsch')) throw new Error('German pronunciation instruction missing');
           console.log('Otto Start V15 runtime assertions passed.');
           NODE
