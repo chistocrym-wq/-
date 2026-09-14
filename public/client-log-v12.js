@@ -80,6 +80,7 @@
     const drift = now - lastTick - 1000;
     lastTick = now;
     const recentlyActive = Date.now() - lastInteractionAt < 15000;
+    if (document.hidden) return;
     if (document.visibilityState !== 'visible' || !document.hasFocus() || !recentlyActive) return;
     if (drift > 1500) {
       send('event-loop-stall', {
