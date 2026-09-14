@@ -55,11 +55,16 @@ function providerDiagnostic(status, detail) {
   return { providerStatus: Number(status) || 0, providerCode: code, providerType: type };
 }
 
+function speechApiRoot() {
+  const configured = (Netlify.env.get('OPENAI_BASE_URL') || 'https://api.openai.com').trim().replace(/\/+$/, '');
+  return /\/v1$/i.test(configured) ? configured : `${configured}/v1`;
+}
+
 export default async (req) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405, { Allow: 'POST' });
 
   const apiKey = Netlify.env.get('OPENAI_API_KEY');
-  const baseUrl = (Netlify.env.get('OPENAI_BASE_URL') || 'https://api.openai.com').replace(/\/$/, '');
+  const apiRoot = speechApiRoot();
   if (!apiKey) return json({ error: 'Neural German voice is not configured.', providerCode: 'missing_openai_api_key' }, 503);
 
   const body = await req.json().catch(() => ({}));
@@ -92,7 +97,7 @@ export default async (req) => {
   }
 
   try {
-    const response = await fetch(`${baseUrl}/v1/audio/speech`, {
+    const response = await fetch(`${apiRoot}/audio/speech`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
