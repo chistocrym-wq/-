@@ -1,35 +1,19 @@
-const VERSION = 'otto-start-offline-v20';
+const VERSION = 'otto-start-offline-v12-1';
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
+
 const CORE = [
   '/',
   '/index.html',
   '/manifest.webmanifest',
-  '/style-v2.css?v=2',
-  '/premium-v3.css?v=3',
-  '/layout-fix-v3.css?v=3',
-  '/learning-fixes-v4.css?v=4',
-  '/client-log-v10.js?v=10',
-  '/mutation-safety-v10.js?v=10',
-  '/word-wrap-hotfix-v11.js?v=11',
-  '/request-timeout-v7.js?v=9',
-  '/pronunciation-v5.js?v=6',
-  '/offline-v5.js?v=5',
-  '/learning-fixes-v4-guard.js?v=6',
-  '/learning-fixes-v4.js?v=4',
-  '/speech-preload-queue-v7.js?v=7',
+  '/otto-v12.css?v=12',
+  '/client-log-v12.js?v=12',
   '/course-data-v8.js?v=8',
   '/course-data-extra-v8.js?v=8',
   '/course-data-core-v8.js?v=8',
-  '/app-v2.js?v=2',
-  '/enhancements-v2.js?v=2',
-  '/text-stability-v8.js?v=9',
-  '/learning-cycle-guard-v9.js?v=9',
-  '/learning-cycle-v9.js?v=9',
-  '/course-v8.js?v=8',
-  '/reading-coach-v9.js?v=9',
-  '/account-v8.js?v=8',
-  '/stability-v8.js?v=8',
+  '/speech-v12.js?v=12',
+  '/pwa-v12.js?v=12',
+  '/app-v12.js?v=12',
   '/otto-icon-192.webp',
   '/otto/otto-guide.webp',
   '/otto/otto-home.webp',
@@ -56,9 +40,11 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const names = await caches.keys();
-    await Promise.all(names
-      .filter((name) => name.startsWith('otto-start-offline-') && ![SHELL_CACHE, RUNTIME_CACHE].includes(name))
-      .map((name) => caches.delete(name)));
+    await Promise.all(
+      names
+        .filter((name) => name.startsWith('otto-start-offline-') && ![SHELL_CACHE, RUNTIME_CACHE].includes(name))
+        .map((name) => caches.delete(name))
+    );
     await self.clients.claim();
   })());
 });
@@ -66,9 +52,9 @@ self.addEventListener('activate', (event) => {
 async function networkFirstNavigation(request) {
   const cache = await caches.open(SHELL_CACHE);
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 2500);
+  const timer = setTimeout(() => controller.abort(), 3000);
   try {
-    const response = await fetch(request, { signal: controller.signal });
+    const response = await fetch(request, { signal: controller.signal, cache: 'no-store' });
     clearTimeout(timer);
     if (response && response.ok) {
       await cache.put('/index.html', response.clone());
@@ -78,7 +64,7 @@ async function networkFirstNavigation(request) {
   } catch (_) {
     clearTimeout(timer);
     return (await cache.match('/index.html')) || (await caches.match('/')) || new Response(
-      '<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Otto Start</title><body style="font-family:system-ui;padding:24px"><h1>Otto Start</h1><p>Сейчас нет интернета, а офлайн-копия ещё не успела сохраниться. Откройте приложение один раз при наличии сети — после этого уроки будут доступны офлайн.</p></body></html>',
+      '<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Otto Start</title><body style="font-family:system-ui;padding:24px"><h1>Otto Start</h1><p>Сейчас нет интернета, а офлайн-копия ещё не успела сохраниться. Откройте приложение один раз при наличии сети.</p></body></html>',
       { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
     );
   }
@@ -88,13 +74,13 @@ async function cacheFirstWithRefresh(request) {
   const cached = await caches.match(request);
   const cache = await caches.open(RUNTIME_CACHE);
   if (cached) {
-    fetch(request).then((response) => {
+    fetch(request, { cache: 'no-store' }).then((response) => {
       if (response && response.ok) cache.put(request, response.clone());
     }).catch(() => {});
     return cached;
   }
   try {
-    const response = await fetch(request);
+    const response = await fetch(request, { cache: 'no-store' });
     if (response && response.ok) await cache.put(request, response.clone());
     return response;
   } catch (_) {
