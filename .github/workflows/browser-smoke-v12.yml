@@ -22,20 +22,20 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Run local interaction smoke
         run: node tests/smoke-v12.mjs
-      - name: Wait for v12 production deploy
+      - name: Wait for stable production deploy
         shell: bash
         run: |
           set -e
           for i in $(seq 1 40); do
             html=$(curl -fsSL --max-time 10 "https://otto-start.netlify.app/?smoke=${GITHUB_SHA}" || true)
-            if echo "$html" | grep -q 'app-v12.js?v=12'; then
-              echo "v12 production HTML is live"
+            if echo "$html" | grep -q 'app-v12.js?v=15'; then
+              echo "Stable production HTML is live"
               exit 0
             fi
-            echo "Waiting for production v12 ($i)"
+            echo "Waiting for stable production ($i)"
             sleep 5
           done
-          echo "Production did not expose v12 in time"
+          echo "Production did not expose stable runtime in time"
           exit 1
       - name: Verify German neural TTS endpoint
         shell: bash
@@ -48,7 +48,7 @@ jobs:
           cat tts-headers.txt
           test "$status" = "200" || { echo "TTS HTTP $status"; cat tts.mp3; exit 1; }
           grep -qi '^content-type: audio/mpeg' tts-headers.txt || { echo "TTS did not return MP3"; exit 1; }
-          grep -qi '^x-otto-pronunciation: de-DE-hochdeutsch-v3' tts-headers.txt || { echo "Wrong pronunciation version"; exit 1; }
+          grep -qi '^x-otto-pronunciation: de-DE-hochdeutsch-v4' tts-headers.txt || { echo "Wrong pronunciation version"; exit 1; }
           size=$(wc -c < tts.mp3)
           test "$size" -gt 1000 || { echo "TTS audio unexpectedly small: $size"; exit 1; }
-          echo "German TTS v3 returned $size bytes"
+          echo "German TTS v4 returned $size bytes"
