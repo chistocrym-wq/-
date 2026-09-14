@@ -1,0 +1,22 @@
+name: Package repo temporary
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/package-repo-temp.yml'
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Upload repository snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: otto-start-repo-snapshot
+          path: |
+            .
+            !.git
+          include-hidden-files: true
+          retention-days: 1
