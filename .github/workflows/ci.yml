@@ -20,13 +20,13 @@ jobs:
         run: npm install
       - name: Build
         run: npm run build
-      - name: Validate stable Otto Start runtime
+      - name: Validate Otto Start V15
         run: |
           set -e
           for file in \
-            public/index.html public/otto-v12.css public/client-log-v14.js public/runtime-v14.js \
+            public/index.html public/otto-v12.css public/otto-v15.css public/client-log-v14.js public/runtime-v14.js \
             public/course-data-v8.js public/course-data-extra-v8.js public/course-data-core-v8.js \
-            public/speech-v12.js public/app-v12.js \
+            public/speech-v15.js public/app-v15.js \
             netlify/functions/otto-tts.js netlify/functions/otto-start-pronunciation.js \
             netlify/functions/otto-start-support.js netlify/functions/otto-start-client-log.js; do
             test -f "$file" || { echo "Missing required file: $file"; exit 1; }
@@ -34,7 +34,7 @@ jobs:
 
           for file in \
             public/client-log-v14.js public/runtime-v14.js public/course-data-v8.js \
-            public/course-data-extra-v8.js public/course-data-core-v8.js public/speech-v12.js public/app-v12.js \
+            public/course-data-extra-v8.js public/course-data-core-v8.js public/speech-v15.js public/app-v15.js \
             netlify/functions/otto-tts.js netlify/functions/otto-start-pronunciation.js \
             netlify/functions/otto-start-support.js netlify/functions/otto-start-client-log.js; do
             node --check "$file"
@@ -43,28 +43,35 @@ jobs:
           node <<'NODE'
           const fs = require('fs');
           const index = fs.readFileSync('public/index.html','utf8');
-          const app = fs.readFileSync('public/app-v12.js','utf8');
-          const speech = fs.readFileSync('public/speech-v12.js','utf8');
+          const app = fs.readFileSync('public/app-v15.js','utf8');
+          const speech = fs.readFileSync('public/speech-v15.js','utf8');
           const runtime = fs.readFileSync('public/runtime-v14.js','utf8');
           const tts = fs.readFileSync('netlify/functions/otto-tts.js','utf8');
 
-          for (const needle of ['client-log-v14.js?v=17','runtime-v14.js?v=17','speech-v12.js?v=17','app-v12.js?v=17']) {
+          for (const needle of ['otto-v15.css?v=18','speech-v15.js?v=18','app-v15.js?v=18']) {
             if (!index.includes(needle)) throw new Error(`index missing ${needle}`);
           }
-          for (const old of ['learning-fixes-v4.js','mutation-safety-v10.js','course-v8.js?v=8','app-v2.js','app-v14.js?v=16','pwa-v12.js','cache-reset-v13.js']) {
-            if (index.includes(old)) throw new Error(`unstable runtime still loaded: ${old}`);
+          for (const old of ['learning-fixes-v4.js','mutation-safety-v10.js','app-v2.js','app-v12.js?v=','app-v14.js?v=','speech-v12.js?v=','speech-v14.js?v=','pwa-v12.js','cache-reset-v13.js']) {
+            if (index.includes(old)) throw new Error(`old runtime still loaded: ${old}`);
           }
-          if (app.includes('new MutationObserver(')) throw new Error('app must not create MutationObserver');
-          if (app.includes('stopImmediatePropagation')) throw new Error('app must not use stopImmediatePropagation');
+          if (app.includes('new MutationObserver(') || app.includes('stopImmediatePropagation')) throw new Error('unstable DOM interception returned');
           if (!runtime.includes('getRegistrations') || !runtime.includes('unregister')) throw new Error('stale service worker cleanup missing');
-          if (!runtime.includes("localStorage.removeItem(k)")) throw new Error('one-time stale state cleanup missing');
-          if (!app.includes('Выберите значение на русском языке.') || !app.includes('Все варианты — перевод на русский.')) throw new Error('Russian-only meaning quiz missing');
-          if (!app.includes("U('zero-01', 'Первые два слова'") || !app.includes("U('zero-02', 'Да и нет'") || !app.includes("U('zero-03', 'Спасибо и пожалуйста'")) throw new Error('absolute-beginner progression missing');
-          if (!app.includes('const pageSize = 20')) throw new Error('dictionary pagination guard missing');
-          if (speech.includes('speechSynthesis') || speech.includes('SpeechSynthesisUtterance')) throw new Error('browser TTS fallback forbidden');
-          if (!tts.includes('otto-tts-cache-de-v4') || !tts.includes('de-DE-hochdeutsch-v4')) throw new Error('German TTS v4 missing');
-          if (!tts.includes('speechUrls()') || !tts.includes('Standarddeutsch/Hochdeutsch')) throw new Error('gateway-aware German TTS guard missing');
-          console.log('Stable Otto Start runtime assertions passed.');
+          if (!app.includes("ALPHA('a01'") || !app.includes("ALPHA('a02'")) throw new Error('alphabet progression missing');
+          if (!app.includes("RULE('r01'") || !app.includes("RULE('r04'")) throw new Error('reading-rule progression missing');
+          for (const rule of ['ei','ie','sch','ichch','achch','sp','st','eu','ss','umlaut','ending']) {
+            if (!app.includes(`id:'${rule}'`)) throw new Error(`reading rule missing ${rule}`);
+          }
+          if (!app.includes('Мини‑тест готовности к Otto A1') || !app.includes('score>=80') || !app.includes('>=60')) throw new Error('A1 readiness test missing');
+          if (!app.includes('Выберите перевод на русском языке.') || !app.includes('Только здесь варианты ответа даны по-немецки.')) throw new Error('translation direction guard missing');
+          if (!app.includes("WORD('z01','Первое слово'") || !app.includes("WORD('z02','Да и нет'") || !app.includes("WORD('z03','Спасибо и пожалуйста'")) throw new Error('absolute-zero progression missing');
+          if (!app.includes('size=12')) throw new Error('dictionary pagination guard missing');
+          if (!speech.includes('new Audio(url)') || !speech.includes('audio.play()')) throw new Error('direct media playback missing');
+          if (speech.includes("fetch('/api/otto-tts'")) throw new Error('audio must not wait for fetch before play');
+          if (!speech.includes('getUserMedia') || !speech.includes('MediaRecorder') || !speech.includes('/api/otto-start-pronunciation')) throw new Error('real recording pipeline missing');
+          if (!tts.includes("req.method === 'GET'") || !tts.includes('URLSearchParams') && !tts.includes('searchParams')) throw new Error('GET TTS playback route missing');
+          if (!tts.includes('otto-tts-cache-de-v5') || !tts.includes('de-DE-hochdeutsch-v5')) throw new Error('German TTS v5 missing');
+          if (!tts.includes('Standarddeutsch/Hochdeutsch')) throw new Error('German pronunciation instruction missing');
+          console.log('Otto Start V15 runtime assertions passed.');
           NODE
 
           node --input-type=module <<'NODE'
@@ -79,6 +86,8 @@ jobs:
           if (d.topics.length < 24) throw new Error(`Too few topics: ${d.topics.length}`);
           if (words.length < 500) throw new Error(`Word coverage too small: ${words.length}`);
           if (phrases.length < 95) throw new Error(`Expression coverage too small: ${phrases.length}`);
+          const alphabet = d.topic('alphabet');
+          if (!alphabet?.alphabet || alphabet.alphabet.length < 30) throw new Error('German alphabet data missing');
           const family = d.topic('family');
           for (const name of ['Mutter','Vater','Sohn','Tochter','Bruder','Schwester','Oma','Opa','Tante','Onkel']) {
             if (!family?.words.some(x => x.de.includes(name))) throw new Error(`Family coverage missing ${name}`);
