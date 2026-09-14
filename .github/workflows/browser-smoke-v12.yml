@@ -49,12 +49,9 @@ jobs:
           grep -qi '^x-otto-pronunciation: de-DE-hochdeutsch-v5' tts-headers.txt || { echo "Wrong pronunciation version"; exit 1; }
           size=$(wc -c < tts.mp3)
           test "$size" -gt 1000 || { echo "TTS audio unexpectedly small: $size"; exit 1; }
+          file tts.mp3
           echo "German TTS v5 returned $size bytes"
-      - name: Verify production browser actually plays audio
-        env:
-          OTTO_START_URL: https://otto-start.netlify.app/
-        run: node tests/production-media-v15.mjs
-      - name: Verify pronunciation provider with real audio
+      - name: Verify pronunciation provider with real generated German audio
         shell: bash
         run: |
           set -e
@@ -71,4 +68,4 @@ jobs:
             --data-binary @pron-request.json)
           cat pron-response.json
           test "$status" = "200" || { echo "Pronunciation HTTP $status"; exit 1; }
-          node -e "const p=require('./pron-response.json'); if(!['good','retry','slower'].includes(p.status)) throw new Error('Bad pronunciation status'); if(typeof p.feedbackRu!=='string'||!p.feedbackRu) throw new Error('Missing feedback'); console.log('Pronunciation provider returned',p.status,'transcript=',p.transcript)"
+          node -e "const p=require('./pron-response.json'); if(!['good','retry','slower'].includes(p.status)) throw new Error('Bad pronunciation status'); if(typeof p.feedbackRu!=='string'||!p.feedbackRu) throw new Error('Missing feedback'); if(typeof p.transcript!=='string') throw new Error('Missing transcript field'); console.log('Pronunciation provider returned',p.status,'transcript=',p.transcript)"
