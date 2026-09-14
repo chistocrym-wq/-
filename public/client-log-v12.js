@@ -19,6 +19,13 @@
   })();
 
   const sent = new Map();
+  let lastInteractionAt = Date.now();
+  let activeAction = '';
+
+  ['pointerdown', 'touchstart', 'keydown'].forEach((name) => {
+    window.addEventListener(name, () => { lastInteractionAt = Date.now(); }, { passive: true, capture: true });
+  });
+
   function currentScreen() {
     return String(document.querySelector('[data-v12-screen]')?.getAttribute('data-v12-screen') || document.querySelector('h1')?.textContent || document.title || '').slice(0, 180);
   }
@@ -54,6 +61,7 @@
     send('error', {
       message: event.message || event.error?.message || 'window error',
       stack: event.error?.stack || '',
+      target: activeAction,
     });
   });
 
@@ -62,6 +70,7 @@
     send('unhandledrejection', {
       message: reason?.message || String(reason || 'promise rejection'),
       stack: reason?.stack || '',
+      target: activeAction,
     });
   });
 
@@ -70,12 +79,14 @@
     const now = performance.now();
     const drift = now - lastTick - 1000;
     lastTick = now;
-    if (document.hidden) return;
-    if (drift > 1800) {
+    const recentlyActive = Date.now() - lastInteractionAt < 15000;
+    if (document.visibilityState !== 'visible' || !document.hasFocus() || !recentlyActive) return;
+    if (drift > 1500) {
       send('event-loop-stall', {
-        message: `Visible main thread stalled about ${Math.round(drift)} ms`,
+        message: `Active main thread stalled about ${Math.round(drift)} ms`,
+        target: activeAction,
         details: { driftMs: Math.round(drift) },
-      }, 8000);
+      }, 5000);
     }
   }, 1000);
 
@@ -89,18 +100,27 @@
   document.addEventListener('click', (event) => {
     const el = event.target.closest?.('[data-action]');
     if (!el || el.disabled) return;
+    lastInteractionAt = Date.now();
     const target = targetDescription(el);
+    activeAction = target;
     const before = window.OttoStartV12?.signature?.() || '';
+    const started = performance.now();
     setTimeout(() => {
-      if (document.hidden || !document.contains(el)) return;
+      const elapsedMs = Math.round(performance.now() - started);
       const after = window.OttoStartV12?.signature?.() || '';
-      if (before && after && before === after && !['audio','pronounce'].includes(el.getAttribute('data-action'))) {
-        send('stuck-click', { message: 'Action produced no state/view change', target }, 2500);
+      const action = el.getAttribute('data-action') || '';
+      if (document.visibilityState === 'visible' && document.hasFocus() && before && after && before === after && !['audio','pronounce'].includes(action)) {
+        send('stuck-click', {
+          message: 'Action produced no state/view change',
+          target,
+          details: { elapsedMs },
+        }, 2000);
       }
+      if (activeAction === target) activeAction = '';
     }, 1200);
   }, true);
 
-  window.addEventListener('load', () => send('page-ready', { message: 'Otto Start client logger v12 ready' }, 60000), { once: true });
+  window.addEventListener('load', () => send('page-ready', { message: 'Otto Start client logger v12.2 ready' }, 60000), { once: true });
 
   window.OttoClientLogV12 = { send, session };
 })();
