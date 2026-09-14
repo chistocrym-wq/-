@@ -6,6 +6,7 @@ const VOICE = 'marin';
 const STORE = 'otto-tts-cache-de-v3';
 const PRONUNCIATION_VERSION = 'de-DE-hochdeutsch-v3';
 const MAX_TEXT_LENGTH = 420;
+const OPENAI_SPEECH_URL = 'https://api.openai.com/v1/audio/speech';
 
 function json(data, status = 200, headers = {}) {
   return new Response(JSON.stringify(data), {
@@ -55,16 +56,10 @@ function providerDiagnostic(status, detail) {
   return { providerStatus: Number(status) || 0, providerCode: code, providerType: type };
 }
 
-function speechApiRoot() {
-  const configured = (Netlify.env.get('OPENAI_BASE_URL') || 'https://api.openai.com').trim().replace(/\/+$/, '');
-  return /\/v1$/i.test(configured) ? configured : `${configured}/v1`;
-}
-
 export default async (req) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405, { Allow: 'POST' });
 
   const apiKey = Netlify.env.get('OPENAI_API_KEY');
-  const apiRoot = speechApiRoot();
   if (!apiKey) return json({ error: 'Neural German voice is not configured.', providerCode: 'missing_openai_api_key' }, 503);
 
   const body = await req.json().catch(() => ({}));
@@ -97,7 +92,7 @@ export default async (req) => {
   }
 
   try {
-    const response = await fetch(`${apiRoot}/audio/speech`, {
+    const response = await fetch(OPENAI_SPEECH_URL, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
