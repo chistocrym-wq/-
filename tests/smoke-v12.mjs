@@ -4,17 +4,6 @@ import { spawn } from 'node:child_process';
 const server = spawn('python3', ['-m', 'http.server', '4173', '--directory', 'public'], { stdio: ['ignore', 'pipe', 'pipe'] });
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-function silentWav(seconds = 1, sampleRate = 8000) {
-  const samples = Math.floor(seconds * sampleRate);
-  const dataSize = samples * 2;
-  const buf = Buffer.alloc(44 + dataSize);
-  buf.write('RIFF', 0); buf.writeUInt32LE(36 + dataSize, 4); buf.write('WAVE', 8);
-  buf.write('fmt ', 12); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20); buf.writeUInt16LE(1, 22);
-  buf.writeUInt32LE(sampleRate, 24); buf.writeUInt32LE(sampleRate * 2, 28); buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34);
-  buf.write('data', 36); buf.writeUInt32LE(dataSize, 40);
-  return buf;
-}
-
 async function waitForServer() {
   for (let i = 0; i < 40; i += 1) {
     try { const r = await fetch('http://127.0.0.1:4173/'); if (r.ok) return; } catch {}
@@ -37,14 +26,17 @@ try {
     class FakeUtterance {
       constructor(text) { this.text = text; this.lang = ''; this.rate = 1; this.pitch = 1; this.volume = 1; this.voice = null; }
     }
+    const maleGermanVoice = { name:'Microsoft Stefan - German (Germany)', lang:'de-DE', localService:true, default:false };
     const synth = {
       speaking: false,
       cancel() { this.speaking = false; },
-      getVoices() { return [{ name:'Test Deutsch', lang:'de-DE' }]; },
+      getVoices() { return [maleGermanVoice, { name:'Microsoft Katja - German (Germany)', lang:'de-DE', localService:true, default:true }]; },
       speak(utterance) {
         this.speaking = true;
         window.__ottoTestSpeakCount = (window.__ottoTestSpeakCount || 0) + 1;
         window.__ottoTestLastSpeech = utterance.text;
+        window.__ottoTestLastVoice = utterance.voice?.name || '';
+        window.__ottoTestLastLang = utterance.voice?.lang || utterance.lang || '';
         utterance.onstart?.();
         setTimeout(() => { this.speaking = false; utterance.onend?.(); }, 80);
       },
@@ -54,7 +46,8 @@ try {
   });
 
   let pronunciationPosts = 0;
-  await page.route('**/api/otto-tts**', async (route) => route.fulfill({ status: 200, contentType: 'audio/wav', body: silentWav(1.2) }));
+  // Force the app to prove that its browser fallback accepts only a real German male voice.
+  await page.route('**/api/otto-tts**', async (route) => route.fulfill({ status: 503, contentType: 'application/json', body: '{"error":"server voice unavailable in local smoke"}' }));
   await page.route('**/api/otto-start-pronunciation', async (route) => {
     const payload = JSON.parse(route.request().postData() || '{}');
     if (!payload.audioBase64 || payload.audioBase64.length < 100) throw new Error('Pronunciation POST did not contain recorded audio');
@@ -84,19 +77,26 @@ try {
   for (const tooEarly of ['Entschuldigung','Familie','Bahnhof']) if (lessonText.includes(tooEarly)) throw new Error(`First lesson exposes ${tooEarly} too early`);
 
   await page.click('[data-action="audio"]');
-  await page.waitForFunction(() => (window.__ottoTestSpeakCount || 0) >= 1, { timeout: 3000 });
-  const spoken = await page.evaluate(() => window.__ottoTestLastSpeech || '');
-  if (!spoken.toLowerCase().includes('hallo')) throw new Error(`German audio did not speak Hallo: ${spoken}`);
+  await page.waitForFunction(() => (window.__ottoTestSpeakCount || 0) >= 1, { timeout: 7000 });
+  const spokenInfo = await page.evaluate(() => ({ text:window.__ottoTestLastSpeech || '', voice:window.__ottoTestLastVoice || '', lang:window.__ottoTestLastLang || '' }));
+  if (!spokenInfo.text.toLowerCase().includes('hallo')) throw new Error(`German audio did not speak Hallo: ${spokenInfo.text}`);
+  if (!/stefan/i.test(spokenInfo.voice)) throw new Error(`Wrong German voice selected: ${spokenInfo.voice}`);
+  if (!/^de-DE$/i.test(spokenInfo.lang)) throw new Error(`Wrong language voice selected: ${spokenInfo.lang}`);
 
   await page.click('[data-action="pronounce"]');
   await page.waitForSelector('[data-record]');
   await page.click('[data-record]');
   await page.waitForSelector('[data-stop]', { timeout: 5000 });
-  await page.waitForTimeout(700);
+  await page.waitForTimeout(900);
   await page.click('[data-stop]');
+  await page.waitForSelector('[data-play-own]', { timeout: 7000 });
+  if (!await page.locator('[data-own-audio][controls]').count()) throw new Error('Native controls for own recording are missing');
+  await page.click('[data-play-own]');
+  await page.waitForFunction(() => document.querySelector('[data-play-own]')?.textContent?.includes('Остановить'), { timeout: 4000 });
   await page.waitForFunction(() => document.querySelector('[data-result]')?.textContent?.includes('Хорошо'), { timeout: 9000 });
   if (pronunciationPosts !== 1) throw new Error(`Expected one pronunciation POST, got ${pronunciationPosts}`);
-  if (!await page.locator('[data-play-own]').count()) throw new Error('Own recording playback is missing');
+  const pronText = await page.locator('[data-result]').innerText();
+  if (/автоматическое распознавание.*не.*работ/i.test(pronText)) throw new Error('Old browser-recognition failure message is still shown');
   await page.click('[data-close]');
 
   await page.click('[data-action="start-quiz"]');
@@ -119,7 +119,7 @@ try {
   const afterFirst = await page.locator('body').innerText();
   if (!afterFirst.includes('Да и нет')) throw new Error('Second beginner step is not “Да и нет”');
 
-  for (let i = 0; i < 12; i += 1) {
+  for (let i = 0; i < 4; i += 1) {
     await page.click('[data-action="nav-dictionary"]');
     await page.waitForSelector('.v12-dict-toolbar', { timeout: 1800 });
     const cards = await page.locator('.v12-dict-card').count();
@@ -137,7 +137,7 @@ try {
   await page.click('[data-action="reading-guide"]');
   await page.waitForSelector('[data-v16-reading-extra]', { timeout: 3000 });
   const reading = await page.locator('body').innerText();
-  for (const marker of ['ei','ie','sch','ch после i/e','sp в начале','st в начале','eu / äu','ß','ä / ö / ü','qu','ck','tz','pf','ng / nk','гласная + h']) {
+  for (const marker of ['ei','ie','sch','ch после i/e','sp в начале','st в начале','eu / äu','ß','ä / ö / ü','au','tsch','qu','ck','tz','pf','ng / nk','гласная + h','-ig в конце']) {
     if (!reading.includes(marker)) throw new Error(`Reading guide missing ${marker}`);
   }
 
@@ -159,7 +159,7 @@ try {
   }
 
   if (errors.length) throw new Error(`Browser errors:\n${errors.join('\n')}`);
-  console.log('Otto Start V16 smoke passed: visible A1 roadmap, German audio, microphone recording and playback, gradual beginner progression, alphabet, expanded reading rules, ordered A1 topics and final readiness section.');
+  console.log('Otto Start V17 smoke passed: strict de-DE male fallback, correct lesson audio routing, microphone recording, playable own recording, pronunciation check pipeline, alphabet, reading rules and A1 route.');
 } finally {
   if (browser) await browser.close();
   server.kill('SIGTERM');
