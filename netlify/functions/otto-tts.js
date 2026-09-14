@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { getDeployStore, getStore } from '@netlify/blobs';
 
-const MODEL = 'gpt-4o-mini-tts-2025-12-15';
+const MODEL = 'gpt-4o-mini-tts';
 const VOICE = 'marin';
 const STORE = 'otto-tts-cache-de-v3';
 const PRONUNCIATION_VERSION = 'de-DE-hochdeutsch-v3';
