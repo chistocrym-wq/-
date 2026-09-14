@@ -3,8 +3,8 @@ import { getDeployStore, getStore } from '@netlify/blobs';
 
 const MODEL = 'gpt-4o-mini-tts-2025-12-15';
 const VOICE = 'marin';
-const STORE = 'otto-tts-cache-de-v2';
-const PRONUNCIATION_VERSION = 'de-DE-hochdeutsch-v2';
+const STORE = 'otto-tts-cache-de-v3';
+const PRONUNCIATION_VERSION = 'de-DE-hochdeutsch-v3';
 const MAX_TEXT_LENGTH = 420;
 
 function json(data, status = 200, headers = {}) {
@@ -25,20 +25,20 @@ function isGermanLetter(text) {
 
 function speechInstructions(mode, kind) {
   const pace = mode === 'slow'
-    ? 'Sprich nur etwas langsamer als normales Hochdeutsch. Dehne keine Laute künstlich und zerlege Wörter nicht unnatürlich.'
-    : 'Sprich in ruhigem, natürlichem Tempo.';
+    ? 'Sprich langsam und sehr klar für einen absoluten Anfänger, aber weiterhin natürlich. Behalte die normale deutsche Wortmelodie und korrekte Vokallängen bei. Zerlege Wörter nicht künstlich in Buchstaben oder Silben.'
+    : 'Sprich in ruhigem, natürlichem Tempo einer muttersprachlichen Deutschlehrkraft.';
 
   const letterRule = kind === 'letter'
-    ? 'Der Text ist ein einzelner Buchstabe. Sprich ausschließlich den DEUTSCHEN Buchstabennamen, niemals den englischen. Beispiele zur Aussprache: J = Jot, V = Vau, W = Weh, Y = Ypsilon, Z = Zett, ß = Eszett. Füge keine Erklärung hinzu.'
-    : 'Lies jedes Wort als deutsches Wort im Kontext der deutschen Standardsprache. Auch internationale Wörter und Lehnwörter müssen deutsch ausgesprochen werden, z. B. Ticket, Bus, Sport, Euro, Termin und Café — nicht englisch.';
+    ? 'Der Text ist ein einzelner Buchstabe. Sprich ausschließlich den deutschen Buchstabennamen, niemals den englischen. J = Jot, V = Vau, W = Weh, Y = Ypsilon, Z = Zett, ß = Eszett. Füge keine Erklärung hinzu.'
+    : 'Lies den gelieferten Text ausschließlich als Standarddeutsch aus Deutschland. Internationale Wörter wie Ticket, Bus, Sport, Euro, Termin oder Café werden mit deutscher Aussprache gesprochen, nicht englisch.';
 
   return [
-    'Sprich ausschließlich den gelieferten Text.',
-    'Sprache und Aussprache: Deutsch (Deutschland), Standarddeutsch/Hochdeutsch, de-DE.',
-    'Kein englischer Akzent, keine englischen Buchstabennamen und keine englische Aussprache einzelner Wörter.',
-    'Sprich wie eine muttersprachliche, ruhige Deutschlehrkraft aus Deutschland.',
-    'Artikuliere natürlich und korrekt: ich-Laut [ç] in ich/mich/Milch, sch [ʃ], z [ts], w [v], j [j], ei [aɪ̯], ie [iː], eu/äu [ɔʏ̯], sp/st am Wortanfang [ʃp]/[ʃt], sowie ä/ö/ü und deutsches r.',
-    'Bei Endungen -e und -er keine russische oder englische Überartikulation: schwaches deutsches Schwa bzw. reduzierte Endung verwenden.',
+    'Sprich ausschließlich den gelieferten Text und nichts zusätzlich.',
+    'Sprache: Deutsch (Deutschland), Standarddeutsch/Hochdeutsch, de-DE.',
+    'Kein englischer oder russischer Akzent. Keine englischen Buchstabennamen.',
+    'Aussprache wie bei einer ruhigen muttersprachlichen Deutschlehrkraft aus Deutschland.',
+    'Achte besonders auf: ich-Laut [ç] in ich/mich/Milch; ach-Laut [x] nach a/o/u/au; sch [ʃ]; z [ts]; w [v]; j [j]; ei [aɪ̯]; ie [iː]; eu/äu [ɔʏ̯]; sp/st am Wortanfang [ʃp]/[ʃt]; ä, ö, ü; ß als stimmloses s; deutsches r.',
+    'Endungen -e und -er natürlich reduziert sprechen, aber nicht künstlich verschlucken.',
     letterRule,
     pace,
   ].join(' ');
@@ -49,17 +49,17 @@ export default async (req) => {
 
   const apiKey = Netlify.env.get('OPENAI_API_KEY');
   const baseUrl = (Netlify.env.get('OPENAI_BASE_URL') || 'https://api.openai.com').replace(/\/$/, '');
-  if (!apiKey) return json({ fallback: true, error: 'Neural voice is not configured.' }, 503);
+  if (!apiKey) return json({ error: 'Neural German voice is not configured.' }, 503);
 
   const body = await req.json().catch(() => ({}));
   const text = String(body.text || '').trim();
-  const mode = body.mode === 'slow' ? 'slow' : 'normal';
+  const mode = body.mode === 'normal' ? 'normal' : 'slow';
   const kind = body.kind === 'letter' || isGermanLetter(text) ? 'letter' : 'text';
 
   if (!text) return json({ error: 'Text is required.' }, 400);
   if (text.length > MAX_TEXT_LENGTH) return json({ error: 'Text is too long.' }, 413);
 
-  const speed = mode === 'slow' ? 0.92 : 1.0;
+  const speed = mode === 'slow' ? 0.88 : 1.0;
   const fingerprint = JSON.stringify({ pronunciationVersion: PRONUNCIATION_VERSION, model: MODEL, voice: VOICE, kind, mode, speed, text });
   const key = createHash('sha256').update(fingerprint).digest('hex');
   const store = cacheStore();
@@ -100,7 +100,7 @@ export default async (req) => {
     if (!response.ok) {
       const detail = await response.text();
       console.error('otto-tts provider error', response.status, detail.slice(0, 500));
-      return json({ fallback: true, error: 'Neural voice is temporarily unavailable.' }, 502);
+      return json({ error: 'Neural German voice is temporarily unavailable.' }, 502);
     }
 
     const audio = await response.arrayBuffer();
@@ -120,7 +120,7 @@ export default async (req) => {
     });
   } catch (error) {
     console.error('otto-tts error', error);
-    return json({ fallback: true, error: 'Neural voice is temporarily unavailable.' }, 502);
+    return json({ error: 'Neural German voice is temporarily unavailable.' }, 502);
   }
 };
 
