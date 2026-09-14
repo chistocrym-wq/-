@@ -1,7 +1,7 @@
 {
   "name": "Otto Start — немецкий с нуля",
   "short_name": "Otto Start",
-  "description": "Немецкий с абсолютного нуля до готовности перейти к тренажёру A1.",
+  "description": "От уровня \"ноль\" к тренажёру А1.",
   "lang": "ru",
   "start_url": "/",
   "scope": "/",
@@ -11,7 +11,7 @@
   "theme_color": "#416f71",
   "icons": [
     {
-      "src": "/otto-icon-192.webp",
+      "src": "/otto/otto-home.webp",
       "sizes": "192x192",
       "type": "image/webp",
       "purpose": "any"
