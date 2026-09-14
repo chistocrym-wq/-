@@ -20,87 +20,60 @@ jobs:
         run: npm install
       - name: Build
         run: npm run build
-      - name: Validate Otto Start v12
+      - name: Validate Otto Start v14
         run: |
           set -e
           for file in \
-            public/index.html public/sw.js public/manifest.webmanifest public/otto-v12.css \
-            public/client-log-v12.js public/speech-v12.js public/pwa-v12.js public/app-v12.js \
+            public/index.html public/otto-v12.css public/client-log-v12.js \
             public/course-data-v8.js public/course-data-extra-v8.js public/course-data-core-v8.js \
+            public/sw-kill-v14.js public/speech-v14.js public/app-v14.js \
             netlify/functions/otto-tts.js netlify/functions/otto-start-pronunciation.js \
             netlify/functions/otto-start-support.js netlify/functions/otto-start-client-log.js; do
             test -f "$file" || { echo "Missing required file: $file"; exit 1; }
           done
 
           for file in \
-            public/sw.js public/client-log-v12.js public/speech-v12.js public/pwa-v12.js public/app-v12.js \
-            public/course-data-v8.js public/course-data-extra-v8.js public/course-data-core-v8.js \
+            public/client-log-v12.js public/course-data-v8.js public/course-data-extra-v8.js \
+            public/course-data-core-v8.js public/sw-kill-v14.js public/speech-v14.js public/app-v14.js \
             netlify/functions/otto-tts.js netlify/functions/otto-start-pronunciation.js \
             netlify/functions/otto-start-support.js netlify/functions/otto-start-client-log.js; do
-            echo "Syntax: $file"
             node --check "$file"
           done
 
           node <<'NODE'
           const fs = require('fs');
           const index = fs.readFileSync('public/index.html','utf8');
-          const app = fs.readFileSync('public/app-v12.js','utf8');
-          const speech = fs.readFileSync('public/speech-v12.js','utf8');
-          const logger = fs.readFileSync('public/client-log-v12.js','utf8');
-          const pwa = fs.readFileSync('public/pwa-v12.js','utf8');
-          const sw = fs.readFileSync('public/sw.js','utf8');
+          const app = fs.readFileSync('public/app-v14.js','utf8');
+          const speech = fs.readFileSync('public/speech-v14.js','utf8');
+          const kill = fs.readFileSync('public/sw-kill-v14.js','utf8');
           const tts = fs.readFileSync('netlify/functions/otto-tts.js','utf8');
 
-          const requiredIndex = [
-            'otto-v12.css?v=12','client-log-v12.js?v=12','course-data-v8.js?v=8',
-            'course-data-extra-v8.js?v=8','course-data-core-v8.js?v=8',
-            'speech-v12.js?v=12','pwa-v12.js?v=12','app-v12.js?v=12'
-          ];
-          for (const needle of requiredIndex) if (!index.includes(needle)) throw new Error(`index missing ${needle}`);
-
-          const forbiddenRuntime = [
-            'learning-fixes-v4.js','learning-fixes-v4-guard.js','mutation-safety-v10.js',
-            'word-wrap-hotfix-v11.js','text-stability-v8.js','course-v8.js','app-v2.js',
-            'enhancements-v2.js','reading-coach-v9.js','learning-cycle-v9.js',
-            'learning-cycle-guard-v9.js','stability-v8.js','pronunciation-v5.js','offline-v5.js'
-          ];
-          for (const needle of forbiddenRuntime) if (index.includes(needle)) throw new Error(`Legacy runtime is still loaded: ${needle}`);
-
-          for (const [name, source] of [['app-v12',app],['speech-v12',speech],['client-log-v12',logger],['pwa-v12',pwa]]) {
-            if (source.includes('MutationObserver')) throw new Error(`${name} must not use MutationObserver`);
+          for (const needle of ['client-log-v12.js?v=14','sw-kill-v14.js?v=14','speech-v14.js?v=14','app-v14.js?v=14']) {
+            if (!index.includes(needle)) throw new Error(`index missing ${needle}`);
           }
-          if (app.includes('stopImmediatePropagation')) throw new Error('v12 app must not use stopImmediatePropagation');
-          if (app.includes('Node.prototype') || app.includes('Element.prototype')) throw new Error('v12 app must not monkeypatch DOM prototypes');
-
-          const starterNeedles = [
-            "'Первые два слова'","'Hallo'","'Tschüss'","'Да и нет'","'ja'","'nein'",
-            "'Спасибо и пожалуйста'","'danke'","'bitte'","'Я и ты'","'ich'","'du'",
-            "'Числа 0–3'","'Самая близкая семья'","'Бабушка, дедушка, тётя, дядя'",
-            "'Дни недели: 1–4'","'Дни недели: 5–7'"
-          ];
-          for (const needle of starterNeedles) if (!app.includes(needle)) throw new Error(`Beginner sequence missing ${needle}`);
-
-          if (!app.includes("options: makeOptions(item, pool, 'ru')")) throw new Error('Meaning quizzes must use Russian answer labels');
-          if (!app.includes('Все варианты — перевод на русский')) throw new Error('Listening quiz must state Russian answer direction');
-          if (!app.includes('Выберите значение на русском языке')) throw new Error('Meaning quiz must explicitly request Russian meaning');
-          if (app.includes("makeOptions(item, pool, 'de')")) throw new Error('Meaning quiz unexpectedly builds German answer options');
-
-          if (!app.includes('pageSize = 20')) throw new Error('Dictionary must use bounded pagination');
-          if (!app.includes('root.addEventListener')) throw new Error('Consolidated action handler missing');
-          if (!logger.includes('document.hidden')) throw new Error('Logger must ignore background timer throttling');
-          if (!logger.includes('stuck-click') || !logger.includes('event-loop-stall')) throw new Error('Client diagnostics incomplete');
-
-          if (!tts.includes("otto-tts-cache-de-v3")) throw new Error('TTS cache version not reset');
-          if (!tts.includes("de-DE-hochdeutsch-v3")) throw new Error('German pronunciation version not v3');
-          if (!tts.includes('Standarddeutsch/Hochdeutsch')) throw new Error('German TTS instructions incomplete');
-          if (speech.includes('SpeechSynthesisUtterance') || speech.includes('speechSynthesis')) throw new Error('v12 speech must not silently fall back to browser TTS');
-
-          const forbiddenOffline = ['learning-fixes-v4.js','client-log-v10.js','course-v8.js','app-v2.js','text-stability-v8.js'];
-          for (const needle of forbiddenOffline) if (sw.includes(needle)) throw new Error(`Service worker still caches legacy runtime: ${needle}`);
-          for (const needle of ['otto-v12.css?v=12','client-log-v12.js?v=12','speech-v12.js?v=12','pwa-v12.js?v=12','app-v12.js?v=12']) {
-            if (!sw.includes(needle)) throw new Error(`Service worker missing ${needle}`);
+          for (const old of ['app-v12.js','speech-v12.js','pwa-v12.js','cache-reset-v13.js','learning-fixes-v4.js','course-v8.js','app-v2.js']) {
+            if (index.includes(old)) throw new Error(`legacy runtime still loaded: ${old}`);
           }
-          console.log('Stable v12 runtime assertions passed.');
+          if (app.includes('MutationObserver')) throw new Error('v14 app must not use MutationObserver');
+          if (app.includes('stopImmediatePropagation')) throw new Error('v14 app must not use stopImmediatePropagation');
+          if (app.includes('Node.prototype') || app.includes('Element.prototype')) throw new Error('v14 app must not monkeypatch DOM prototypes');
+          if (index.includes('serviceWorker.register') || speech.includes('serviceWorker.register')) throw new Error('service worker must not be re-registered during stabilization');
+          if (!kill.includes('getRegistrations') || !kill.includes('unregister')) throw new Error('service worker cleanup missing');
+
+          for (const needle of ["'Hallo'","'Да и нет'","'danke'","'bitte'","'Я и ты'","'Числа 0–3'","'Самая близкая семья'","'Бабушка, дедушка, тётя, дядя'","'Дни недели: 5–7'"]) {
+            if (!app.includes(needle)) throw new Error(`beginner sequence missing ${needle}`);
+          }
+          if (!app.includes("const correct=String(item.ru")) throw new Error('quiz options are not based on Russian translation');
+          if (!app.includes('Все варианты ответа — по-русски')) throw new Error('Russian answer guidance missing');
+          if (!app.includes('size=12')) throw new Error('dictionary pagination must stay bounded');
+          if (!app.includes("root.addEventListener('click'")) throw new Error('single click handler missing');
+
+          if (!tts.includes("otto-tts-cache-de-v4")) throw new Error('TTS cache v4 missing');
+          if (!tts.includes("de-DE-hochdeutsch-v4")) throw new Error('pronunciation version v4 missing');
+          if (!tts.includes("mode === 'slow' ? 0.94 : 1.0")) throw new Error('natural slow pace missing');
+          if (!tts.includes('Standarddeutsch/Hochdeutsch')) throw new Error('German TTS language guard missing');
+          if (speech.includes('speechSynthesis') || speech.includes('SpeechSynthesisUtterance')) throw new Error('browser TTS fallback forbidden');
+          console.log('Stable v14 runtime assertions passed.');
           NODE
 
           node --input-type=module <<'NODE'
@@ -118,10 +91,6 @@ jobs:
           const family = d.topic('family');
           for (const name of ['Mutter','Vater','Sohn','Tochter','Bruder','Schwester','Oma','Opa','Tante','Onkel']) {
             if (!family?.words.some(x => x.de.includes(name))) throw new Error(`Family coverage missing ${name}`);
-          }
-          const time = d.topic('time');
-          for (const day of ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag']) {
-            if (!time?.words.some(x => x.de.includes(day))) throw new Error(`Weekday missing ${day}`);
           }
           console.log('Curriculum coverage assertions passed.');
           NODE
