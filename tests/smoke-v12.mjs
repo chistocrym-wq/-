@@ -46,7 +46,7 @@ try {
   });
 
   let pronunciationPosts = 0;
-  // Force the app to prove that its browser fallback accepts only a real German male voice.
+  // Intentionally return 503 here: this proves the app refuses a broken server voice and falls back only to a verified de-DE male voice.
   await page.route('**/api/otto-tts**', async (route) => route.fulfill({ status: 503, contentType: 'application/json', body: '{"error":"server voice unavailable in local smoke"}' }));
   await page.route('**/api/otto-start-pronunciation', async (route) => {
     const payload = JSON.parse(route.request().postData() || '{}');
@@ -60,7 +60,12 @@ try {
 
   const errors = [];
   page.on('pageerror', (err) => errors.push(`pageerror: ${err.message}`));
-  page.on('console', (msg) => { if (msg.type() === 'error') errors.push(`console: ${msg.text()}`); });
+  page.on('console', (msg) => {
+    if (msg.type() !== 'error') return;
+    const text = msg.text();
+    if (/Failed to load resource: the server responded with a status of 503/i.test(text)) return;
+    errors.push(`console: ${text}`);
+  });
 
   await page.goto('http://127.0.0.1:4173/', { waitUntil: 'domcontentloaded', timeout: 15000 });
   await page.waitForSelector('[data-action="start-unit"]', { timeout: 8000 });
