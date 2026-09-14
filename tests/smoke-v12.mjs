@@ -144,12 +144,13 @@ try {
   await page.click('[data-action="nav-route"]');
   const routeText = await page.locator('body').innerText();
   if (!routeText.includes('Готовность к тренажёру A1') || !routeText.includes('итоговая проверка')) throw new Error('Final A1 readiness section missing');
-  const order = ['Я и мои данные','Числа, телефон и цена','Семья и люди','Еда и напитки','Дом и жильё','Город и места','Транспорт','Покупки'];
+  const sectionIds = await page.locator('[data-action="open-section"]').evaluateAll((els) => els.map((el) => el.dataset.section));
+  const expectedOrder = ['zero','person','numbers','family','calendar','food','home','city','transport','shopping'];
   let last = -1;
-  for (const title of order) {
-    const pos = routeText.indexOf(title);
-    if (pos < 0) throw new Error(`A1 route missing topic ${title}`);
-    if (pos <= last) throw new Error(`A1 route difficulty order is wrong near ${title}`);
+  for (const id of expectedOrder) {
+    const pos = sectionIds.indexOf(id);
+    if (pos < 0) throw new Error(`A1 route missing stable section ${id}`);
+    if (pos <= last) throw new Error(`A1 route difficulty order is wrong near section ${id}: ${sectionIds.join(' > ')}`);
     last = pos;
   }
 
