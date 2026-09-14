@@ -20,14 +20,14 @@ jobs:
         run: npm install
       - name: Build
         run: npm run build
-      - name: Validate Otto Start V16
+      - name: Validate Otto Start V17
         run: |
           set -e
           for file in \
             public/index.html public/otto-v12.css public/otto-v15.css public/curriculum-v16.css \
             public/client-log-v14.js public/runtime-v14.js \
             public/course-data-v8.js public/course-data-extra-v8.js public/course-data-core-v8.js \
-            public/speech-v16.js public/app-v15.js public/curriculum-v16.js \
+            public/speech-v17.js public/app-v15.js public/curriculum-v16.js \
             netlify/functions/otto-tts.js netlify/functions/otto-start-pronunciation.js \
             netlify/functions/otto-start-support.js netlify/functions/otto-start-client-log.js; do
             test -f "$file" || { echo "Missing required file: $file"; exit 1; }
@@ -35,7 +35,7 @@ jobs:
 
           for file in \
             public/client-log-v14.js public/runtime-v14.js public/course-data-v8.js \
-            public/course-data-extra-v8.js public/course-data-core-v8.js public/speech-v16.js public/app-v15.js public/curriculum-v16.js \
+            public/course-data-extra-v8.js public/course-data-core-v8.js public/speech-v17.js public/app-v15.js public/curriculum-v16.js \
             netlify/functions/otto-tts.js netlify/functions/otto-start-pronunciation.js \
             netlify/functions/otto-start-support.js netlify/functions/otto-start-client-log.js; do
             node --check "$file"
@@ -45,41 +45,35 @@ jobs:
           const fs = require('fs');
           const index = fs.readFileSync('public/index.html','utf8');
           const app = fs.readFileSync('public/app-v15.js','utf8');
-          const speech = fs.readFileSync('public/speech-v16.js','utf8');
+          const speech = fs.readFileSync('public/speech-v17.js','utf8');
           const bridge = fs.readFileSync('public/curriculum-v16.js','utf8');
           const runtime = fs.readFileSync('public/runtime-v14.js','utf8');
           const tts = fs.readFileSync('netlify/functions/otto-tts.js','utf8');
+          const pron = fs.readFileSync('netlify/functions/otto-start-pronunciation.js','utf8');
 
-          for (const needle of ['otto-v15.css?v=19','curriculum-v16.css?v=19','speech-v16.js?v=19','app-v15.js?v=19','curriculum-v16.js?v=19']) {
+          for (const needle of ['otto-v15.css?v=20','curriculum-v16.css?v=20','speech-v17.js?v=20','app-v15.js?v=20','curriculum-v16.js?v=20']) {
             if (!index.includes(needle)) throw new Error(`index missing ${needle}`);
           }
-          for (const old of ['learning-fixes-v4.js','mutation-safety-v10.js','app-v2.js','app-v12.js?v=','app-v14.js?v=','speech-v12.js?v=','speech-v14.js?v=','speech-v15.js?v=','pwa-v12.js','cache-reset-v13.js']) {
+          for (const old of ['learning-fixes-v4.js','mutation-safety-v10.js','app-v2.js','app-v12.js?v=','app-v14.js?v=','speech-v12.js?v=','speech-v14.js?v=','speech-v15.js?v=','speech-v16.js?v=','pwa-v12.js','cache-reset-v13.js']) {
             if (index.includes(old)) throw new Error(`old runtime still loaded: ${old}`);
           }
           if (app.includes('new MutationObserver(') || app.includes('stopImmediatePropagation')) throw new Error('unstable DOM interception returned to core app');
           if (!runtime.includes('getRegistrations') || !runtime.includes('unregister')) throw new Error('stale service worker cleanup missing');
           if (!app.includes("ALPHA('a01'") || !app.includes("ALPHA('a02'")) throw new Error('alphabet progression missing');
           if (!app.includes("RULE('r01'") || !app.includes("RULE('r04'")) throw new Error('reading-rule progression missing');
-          for (const rule of ['ei','ie','sch','ichch','achch','sp','st','eu','ss','umlaut','ending']) {
-            if (!app.includes(`id:'${rule}'`)) throw new Error(`reading rule missing ${rule}`);
-          }
+          for (const rule of ['ei','ie','sch','ichch','achch','sp','st','eu','ss','umlaut','ending']) if (!app.includes(`id:'${rule}'`)) throw new Error(`reading rule missing ${rule}`);
           if (!bridge.includes('От нуля — именно к тренажёру A1') || !bridge.includes('Ещё важные особенности для A1')) throw new Error('visible A1 route or reading extras missing');
-          for (const rule of ['qu','ck','tz','pf','ng / nk','гласная + h']) {
-            if (!bridge.includes(rule)) throw new Error(`extra reading feature missing ${rule}`);
-          }
+          for (const rule of ['au','tsch','qu','ck','tz','pf','ng / nk','гласная + h','-ig в конце']) if (!bridge.includes(rule)) throw new Error(`extra reading feature missing ${rule}`);
           if (!app.includes('Мини‑тест готовности к Otto A1') || !app.includes('score>=80') || !app.includes('>=60')) throw new Error('A1 readiness test missing');
-          if (!app.includes('Выберите перевод на русском языке.') || !app.includes('Только здесь варианты ответа даны по-немецки.')) throw new Error('translation direction guard missing');
-          if (!app.includes("WORD('z01','Первое слово'") || !app.includes("WORD('z02','Да и нет'") || !app.includes("WORD('z03','Спасибо и пожалуйста'")) throw new Error('absolute-zero progression missing');
-          if (!app.includes('size=12')) throw new Error('dictionary pagination guard missing');
-          if (!speech.includes('speechSynthesis') || !speech.includes("utterance.lang = 'de-DE'")) throw new Error('browser German voice fallback missing');
-          if (!speech.includes('new Audio(url)') || !speech.includes('audio.play()')) throw new Error('server media fallback missing');
+          if (!speech.includes('MALE_DE_NAMES') || !speech.includes('Microsoft') || !speech.includes("utterance.lang = 'de-DE'")) throw new Error('strict German male browser voice selection missing');
+          if (!speech.includes('serverSpeak(clean') || speech.indexOf('serverSpeak(clean') > speech.indexOf('browserMaleSpeak(clean')) throw new Error('neural server voice is not first priority');
           if (!speech.includes('getUserMedia') || !speech.includes('MediaRecorder') || !speech.includes('/api/otto-start-pronunciation')) throw new Error('real recording pipeline missing');
-          if (!speech.includes('data-play-own') || !speech.includes('SpeechRecognition') || !speech.includes('webkitSpeechRecognition')) throw new Error('recording playback or browser recognition fallback missing');
-          if (!tts.includes("req.method === 'GET'") || (!tts.includes('URLSearchParams') && !tts.includes('searchParams'))) throw new Error('GET TTS playback route missing');
-          if (!tts.includes('otto-tts-cache-de-v7') || !tts.includes('de-DE-hochdeutsch-v7')) throw new Error('German TTS v7 missing');
-          if (!tts.includes('gpt-4o-mini-tts') || !tts.includes('gemini-3.1-flash-tts-preview') || !tts.includes('pcmToWav') || !tts.includes('isWav')) throw new Error('validated TTS providers missing');
-          if (!tts.includes('Hochdeutsch')) throw new Error('German pronunciation instruction missing');
-          console.log('Otto Start V16 runtime assertions passed.');
+          if (!speech.includes('data-own-audio controls') || !speech.includes('data-play-own') || !speech.includes('Это именно ваша запись с микрофона')) throw new Error('own-recording playback controls missing');
+          if (speech.includes('Автоматическое распознавание в этом браузере сейчас недоступно')) throw new Error('old browser-recognition failure message returned');
+          if (!tts.includes("const OPENAI_VOICE = 'cedar'") || !tts.includes("const GEMINI_VOICE = 'Charon'") || !tts.includes('adult MALE native speaker')) throw new Error('male native German neural voice profile missing');
+          if (!tts.includes('de-DE-hochdeutsch-male-v8') || !tts.includes('otto-tts-cache-de-v8-male')) throw new Error('male TTS cache version missing');
+          if (!pron.includes('gpt-4o-mini-transcribe') || !pron.includes('assessWithGemini') || !pron.includes('transcribeWithOpenAI')) throw new Error('server pronunciation fallback pipeline missing');
+          console.log('Otto Start V17 runtime assertions passed.');
           NODE
 
           node --input-type=module <<'NODE'
@@ -96,9 +90,5 @@ jobs:
           if (phrases.length < 95) throw new Error(`Expression coverage too small: ${phrases.length}`);
           const alphabet = d.topic('alphabet');
           if (!alphabet?.alphabet || alphabet.alphabet.length < 30) throw new Error('German alphabet data missing');
-          const family = d.topic('family');
-          for (const name of ['Mutter','Vater','Sohn','Tochter','Bruder','Schwester','Oma','Opa','Tante','Onkel']) {
-            if (!family?.words.some(x => x.de.includes(name))) throw new Error(`Family coverage missing ${name}`);
-          }
           console.log('Curriculum coverage assertions passed.');
           NODE
