@@ -2,11 +2,11 @@ import { createHash } from 'node:crypto';
 import { getDeployStore, getStore } from '@netlify/blobs';
 
 const OPENAI_MODEL = 'gpt-4o-mini-tts';
-const OPENAI_VOICE = 'marin';
+const OPENAI_VOICE = 'cedar';
 const GEMINI_MODEL = 'gemini-3.1-flash-tts-preview';
-const GEMINI_VOICE = 'Kore';
-const STORE = 'otto-tts-cache-de-v7';
-const PRONUNCIATION_VERSION = 'de-DE-hochdeutsch-v7';
+const GEMINI_VOICE = 'Charon';
+const STORE = 'otto-tts-cache-de-v8-male';
+const PRONUNCIATION_VERSION = 'de-DE-hochdeutsch-male-v8';
 const MAX_TEXT_LENGTH = 420;
 const SAMPLE_RATE = 24000;
 
@@ -28,27 +28,28 @@ const LETTER_NAMES = {
 function spokenText(text, kind) { return kind === 'letter' ? (LETTER_NAMES[String(text || '').trim()] || text) : text; }
 function instructions(mode, kind) {
   const pace = mode === 'slow'
-    ? 'Speak slightly slower than normal conversation for an absolute beginner, but remain natural. Do not split a word into artificial syllables or letters.'
-    : 'Speak calmly, naturally, and clearly.';
-  const letter = kind === 'letter'
-    ? 'The input is a German letter name. Pronounce only that German letter name, never an English letter name.'
-    : 'Pronounce the supplied text as Standard German from Germany.';
+    ? 'Speak a little slower than normal conversation for an absolute beginner, but keep connected natural speech. Never spell a word unless the target itself is a letter.'
+    : 'Speak at a calm, natural teaching pace.';
+  const target = kind === 'letter'
+    ? 'The input represents one German letter. Pronounce only its German letter name, never the English letter name.'
+    : 'Pronounce the supplied target exactly as Standard German from Germany.';
   return [
-    'Language and accent: German (Germany), Standard German/Hochdeutsch, de-DE.',
-    'Sound like a native German teacher. No English or Russian accent.',
-    'Use natural German vowel lengths and stress.',
-    'Pay special attention to ich-Laut [ç], ach-Laut [x], sch [ʃ], z [ts], w [v], j [j], ei [aɪ̯], ie [iː], eu/äu [ɔʏ̯], initial sp/st [ʃp]/[ʃt], ä/ö/ü, ß, and German r.',
-    'Final -e and -er may be reduced naturally but must not be deleted artificially.',
-    letter, pace,
+    'You are a pleasant adult MALE native speaker from Germany teaching absolute beginners.',
+    'Language and accent must be German (Germany), Standard German/Hochdeutsch, de-DE. Do not use an English, Russian, Dutch, Scandinavian, Swiss or Austrian accent.',
+    'Use native German rhythm, stress, vowel length and consonants. Prioritize pedagogically correct pronunciation over dramatic expressiveness.',
+    'Pay special attention to ich-Laut [ç], ach-Laut [x], sch [ʃ], z [ts], w [v], j [j], ei [aɪ̯], ie [iː], eu/äu [ɔʏ̯], au [aʊ̯], initial sp/st [ʃp]/[ʃt], umlauts ä/ö/ü, ß, final devoicing and German r.',
+    'Final -e and -er may be naturally reduced but must not disappear artificially.',
+    target,
+    pace,
     'Speak only the supplied German target and nothing else.',
   ].join(' ');
 }
 function geminiPrompt(text, mode, kind) {
   const target = spokenText(text, kind);
-  const style = mode === 'slow' ? 'etwas langsam, sehr klar, aber natürlich' : 'ruhig, natürlich und deutlich';
+  const style = mode === 'slow' ? 'etwas langsamer als normales Gespräch, sehr klar und trotzdem natürlich' : 'ruhig, natürlich und deutlich';
   return kind === 'letter'
-    ? `Deutsch (Deutschland), Hochdeutsch. Sprich ${style}. Sprich nur den deutschen Buchstabennamen „${target}“, ohne Erklärung.`
-    : `Deutsch (Deutschland), Hochdeutsch. Sprich ${style} und ohne fremden Akzent. Sprich ausschließlich: „${target}“`;
+    ? `Sprachsynthese. Erwachsener männlicher Muttersprachler aus Deutschland, Hochdeutsch. Sprich ${style}. Sprich ausschließlich den deutschen Buchstabennamen: „${target}“`
+    : `Sprachsynthese. Erwachsener männlicher Muttersprachler aus Deutschland, Hochdeutsch (de-DE), ohne fremden Akzent. Sprich ${style}. Verwende natürliche deutsche Vokallängen, Betonung und Laute. Sprich ausschließlich: „${target}“`;
 }
 function pcmToWav(pcm, sampleRate = SAMPLE_RATE) {
   const data = Buffer.isBuffer(pcm) ? pcm : Buffer.from(pcm);
@@ -72,7 +73,7 @@ async function synthesizeOpenAI(apiKey, text, mode, kind) {
         input:spokenText(text,kind),
         instructions:instructions(mode,kind),
         response_format:'wav',
-        speed:mode === 'slow' ? 0.94 : 1,
+        speed:mode === 'slow' ? 0.92 : 0.98,
       }),
     });
     if (!response.ok) {
@@ -83,11 +84,8 @@ async function synthesizeOpenAI(apiKey, text, mode, kind) {
       return {ok:false,status:response.status,code:code||'openai_tts_error'};
     }
     const bytes=Buffer.from(await response.arrayBuffer());
-    if(!isWav(bytes)){
-      console.error('otto-tts OpenAI returned non-WAV',String(response.headers.get('content-type')||''),bytes.length,bytes.subarray(0,12).toString('hex'));
-      return {ok:false,status:502,code:'openai_invalid_audio'};
-    }
-    return {ok:true,audio:bytes,provider:'openai'};
+    if(!isWav(bytes)) return {ok:false,status:502,code:'openai_invalid_audio'};
+    return {ok:true,audio:bytes,provider:'openai-cedar'};
   }catch(error){
     console.error('otto-tts OpenAI network error',error?.name,error?.message);
     return {ok:false,status:502,code:'openai_network_error'};
@@ -120,7 +118,7 @@ async function synthesizeGemini(apiKey, text, mode, kind) {
     const decoded=Buffer.from(encoded,'base64');
     const wav=isWav(decoded)?decoded:pcmToWav(decoded,SAMPLE_RATE);
     if(!isWav(wav))return {ok:false,status:502,code:'gemini_invalid_audio'};
-    return {ok:true,audio:wav,provider:'gemini'};
+    return {ok:true,audio:wav,provider:'gemini-charon'};
   }catch(error){
     console.error('otto-tts Gemini network error',error?.name,error?.message);
     return {ok:false,status:502,code:'gemini_network_error'};
@@ -145,20 +143,20 @@ export default async(req)=>{
   if(!text)return json({error:'Text is required.'},400);
   if(text.length>MAX_TEXT_LENGTH)return json({error:'Text is too long.'},413);
 
-  const fingerprint=JSON.stringify({version:PRONUNCIATION_VERSION,openai:OPENAI_MODEL,gemini:GEMINI_MODEL,voice:OPENAI_VOICE,kind,mode,text});
+  const fingerprint=JSON.stringify({version:PRONUNCIATION_VERSION,openai:OPENAI_MODEL,gemini:GEMINI_MODEL,openaiVoice:OPENAI_VOICE,geminiVoice:GEMINI_VOICE,kind,mode,text});
   const key=createHash('sha256').update(fingerprint).digest('hex');
   const store=cacheStore();
   try{
     const cached=await store.get(key,{type:'arrayBuffer'});
-    if(cached){const audio=Buffer.from(cached);if(isWav(audio))return new Response(audio,{headers:{'Content-Type':'audio/wav','Cache-Control':'public, max-age=31536000, immutable','X-Otto-TTS':'cache','X-Otto-Pronunciation':PRONUNCIATION_VERSION}})}
+    if(cached){const audio=Buffer.from(cached);if(isWav(audio))return new Response(audio,{headers:{'Content-Type':'audio/wav','Cache-Control':'public, max-age=31536000, immutable','X-Otto-TTS':'cache','X-Otto-Pronunciation':PRONUNCIATION_VERSION,'X-Otto-Voice':'male'}})}
   }catch(error){console.warn('otto-tts cache read failed',error?.message||error)}
 
   let result=await synthesizeOpenAI(Netlify.env.get('OPENAI_API_KEY'),text,mode,kind);
   if(!result.ok)result=await synthesizeGemini(Netlify.env.get('GEMINI_API_KEY'),text,mode,kind);
-  if(!result.ok)return json({error:'German voice is temporarily unavailable.',providerCode:result.code||'tts_failed',providerStatus:result.status||502},502);
+  if(!result.ok)return json({error:'High-quality German male voice is not configured on the server.',providerCode:result.code||'tts_failed',providerStatus:result.status||503},503);
 
   try{await store.set(key,result.audio)}catch(error){console.warn('otto-tts cache write failed',error?.message||error)}
-  return new Response(result.audio,{headers:{'Content-Type':'audio/wav','Cache-Control':'public, max-age=31536000, immutable','X-Otto-TTS':'generated','X-Otto-Provider':result.provider,'X-Otto-Pronunciation':PRONUNCIATION_VERSION}});
+  return new Response(result.audio,{headers:{'Content-Type':'audio/wav','Cache-Control':'public, max-age=31536000, immutable','X-Otto-TTS':'generated','X-Otto-Provider':result.provider,'X-Otto-Pronunciation':PRONUNCIATION_VERSION,'X-Otto-Voice':'male'}});
 };
 
 export const config={path:'/api/otto-tts',rateLimit:{windowLimit:60,windowSize:60,aggregateBy:['ip','domain']}};
