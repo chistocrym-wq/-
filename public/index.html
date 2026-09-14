@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#f5f8f6" />
-  <meta name="description" content="Otto Start — немецкий с нуля: короткие занятия и большой накопительный путь к базе A1" />
+  <meta name="description" content="Otto Start — немецкий с абсолютного нуля: короткие занятия и большой накопительный путь к базе A1" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -12,63 +12,41 @@
   <title>Otto Start — немецкий с нуля</title>
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="icon" href="/otto-icon-192.webp" type="image/webp" />
-  <link rel="preload" as="image" href="/otto/otto-horen.webp" type="image/webp" />
   <link rel="preload" as="image" href="/otto/otto-home.webp" type="image/webp" />
-  <link rel="stylesheet" href="/style-v2.css?v=2" />
-  <link rel="stylesheet" href="/premium-v3.css?v=3" />
-  <link rel="stylesheet" href="/layout-fix-v3.css?v=3" />
-  <link rel="stylesheet" href="/learning-fixes-v4.css?v=4" />
+  <link rel="preload" as="image" href="/otto/otto-guide.webp" type="image/webp" />
+  <link rel="stylesheet" href="/otto-v12.css?v=12" />
   <style>
     html,body{background:#f5f8f6}
-    #otto-splash-v8{position:fixed;inset:0;z-index:30000;display:grid;place-items:center;background:#f5f8f6;opacity:1;transition:opacity .32s ease;pointer-events:none}
-    #otto-splash-v8.out{opacity:0}
-    #otto-splash-v8 .otto-splash-circle{width:132px;height:132px;border-radius:50%;display:grid;place-items:center;background:#edf6f4;border:1px solid #dbeae7;box-shadow:0 18px 52px rgba(23,63,67,.10);transform:translateY(5px) scale(.96);opacity:0;animation:ottoSplashIn .42s ease .08s forwards}
-    #otto-splash-v8 img{width:116px;height:116px;object-fit:contain}
-    @keyframes ottoSplashIn{to{opacity:1;transform:translateY(0) scale(1)}}
-    @media(prefers-reduced-motion:reduce){#otto-splash-v8,#otto-splash-v8 .otto-splash-circle{animation:none;transition:none;opacity:1;transform:none}}
+    #otto-splash-v12{position:fixed;inset:0;z-index:60000;display:grid;place-items:center;background:#f5f8f6;opacity:1;transition:opacity .28s ease;pointer-events:none}
+    #otto-splash-v12.out{opacity:0}
+    #otto-splash-v12 div{width:128px;height:128px;border-radius:50%;display:grid;place-items:center;background:#edf6f4;border:1px solid #dbeae7;box-shadow:0 18px 52px rgba(23,63,67,.10)}
+    #otto-splash-v12 img{width:112px;height:112px;object-fit:contain}
   </style>
 </head>
 <body>
-  <div id="otto-splash-v8" aria-hidden="true"><div class="otto-splash-circle"><img src="/otto/otto-horen.webp" alt=""></div></div>
-  <div id="app" aria-live="polite"></div>
+  <div id="otto-splash-v12" aria-hidden="true"><div><img src="/otto/otto-home.webp" alt=""></div></div>
+  <div id="app"></div>
 
-  <script src="/client-log-v10.js?v=10" defer></script>
-  <script src="/mutation-safety-v10.js?v=10" defer></script>
-  <script src="/word-wrap-hotfix-v11.js?v=11" defer></script>
-  <script src="/request-timeout-v7.js?v=9" defer></script>
-  <script src="/pronunciation-v5.js?v=6" defer></script>
-  <script src="/offline-v5.js?v=5" defer></script>
-  <script src="/learning-fixes-v4-guard.js?v=6" defer></script>
-  <script src="/learning-fixes-v4.js?v=4" defer></script>
-  <script src="/speech-preload-queue-v7.js?v=7" defer></script>
+  <script src="/client-log-v12.js?v=12" defer></script>
   <script src="/course-data-v8.js?v=8" defer></script>
   <script src="/course-data-extra-v8.js?v=8" defer></script>
   <script src="/course-data-core-v8.js?v=8" defer></script>
-  <script src="/app-v2.js?v=2" defer></script>
-  <script src="/enhancements-v2.js?v=2" defer></script>
-  <script src="/text-stability-v8.js?v=9" defer></script>
-  <script src="/learning-cycle-guard-v9.js?v=9" defer></script>
-  <script src="/learning-cycle-v9.js?v=9" defer></script>
-  <script src="/course-v8.js?v=8" defer></script>
-  <script src="/reading-coach-v9.js?v=9" defer></script>
-  <script src="/account-v8.js?v=8" defer></script>
-  <script src="/stability-v8.js?v=8" defer></script>
+  <script src="/speech-v12.js?v=12" defer></script>
+  <script src="/pwa-v12.js?v=12" defer></script>
+  <script src="/app-v12.js?v=12" defer></script>
   <script>
-    (()=>{
-      const splash=document.getElementById('otto-splash-v8');
+    window.addEventListener('DOMContentLoaded',()=>{
+      const splash=document.getElementById('otto-splash-v12');
       if(!splash)return;
       const started=performance.now();
-      let finished=false;
       const finish=()=>{
-        if(finished)return;finished=true;
-        const wait=Math.max(0,620-(performance.now()-started));
-        setTimeout(()=>{splash.classList.add('out');setTimeout(()=>splash.remove(),360)},wait);
+        const wait=Math.max(0,420-(performance.now()-started));
+        setTimeout(()=>{splash.classList.add('out');setTimeout(()=>splash.remove(),300)},wait);
       };
-      const ready=()=>document.getElementById('app')?.children.length>0;
-      const check=()=>ready()?finish():setTimeout(check,40);
+      const check=()=>document.getElementById('app')?.children.length?finish():setTimeout(check,40);
       check();
-      setTimeout(finish,1500);
-    })();
+      setTimeout(finish,1800);
+    },{once:true});
   </script>
 </body>
 </html>
