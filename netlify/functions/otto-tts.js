@@ -3,12 +3,12 @@ import { getDeployStore, getStore } from '@netlify/blobs';
 
 const MODEL = 'gpt-4o-mini-tts';
 const VOICE = 'marin';
-const STORE = 'otto-tts-cache-de-v4';
-const PRONUNCIATION_VERSION = 'de-DE-hochdeutsch-v4';
+const STORE = 'otto-tts-cache-de-v5';
+const PRONUNCIATION_VERSION = 'de-DE-hochdeutsch-v5';
 const MAX_TEXT_LENGTH = 420;
 
 function json(data, status = 200, headers = {}) {
-  return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', ...headers } });
+  return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...headers } });
 }
 function cacheStore() {
   const isProduction = Netlify.context?.deploy?.context === 'production';
@@ -17,10 +17,10 @@ function cacheStore() {
 function isGermanLetter(text) { return /^[A-ZÄÖÜẞß]$/iu.test(String(text || '').trim()); }
 function speechInstructions(mode, kind) {
   const pace = mode === 'slow'
-    ? 'Sprich etwas langsamer als normales Gesprächstempo, sehr klar für einen absoluten Anfänger, aber vollkommen natürlich. Keine künstlichen Pausen innerhalb eines Wortes, keine Buchstaben-für-Buchstaben-Aussprache.'
+    ? 'Sprich etwas langsamer als normales Gesprächstempo, sehr klar für einen absoluten Anfänger, aber vollkommen natürlich. Keine künstlichen Pausen innerhalb eines Wortes und keine Buchstaben-für-Buchstaben-Aussprache.'
     : 'Sprich ruhig, natürlich und deutlich wie eine muttersprachliche Deutschlehrkraft aus Deutschland.';
   const letterRule = kind === 'letter'
-    ? 'Der Text ist ein einzelner Buchstabe. Sprich ausschließlich den deutschen Buchstabennamen: J=Jot, V=Vau, W=Weh, Y=Ypsilon, Z=Zett, ß=Eszett.'
+    ? 'Der Text ist ein einzelner Buchstabe. Sprich ausschließlich den deutschen Buchstabennamen. J=Jot, V=Vau, W=Weh, Y=Ypsilon, Z=Zett, ß=Eszett. Bei Ä, Ö und Ü sprich den deutschen Buchstabennamen mit Umlaut.'
     : 'Lies den gelieferten Text als Standarddeutsch aus Deutschland. Auch internationale Wörter wie Ticket, Bus, Sport, Euro, Termin und Café deutsch aussprechen.';
   return [
     'Sprich ausschließlich den gelieferten deutschen Text und nichts zusätzlich.',
@@ -62,30 +62,48 @@ async function requestSpeech(apiKey, payload) {
   return { response:null, diagnostic:lastDiagnostic };
 }
 
+async function readInput(req) {
+  if (req.method === 'GET') {
+    const url = new URL(req.url);
+    return {
+      text: url.searchParams.get('text') || '',
+      mode: url.searchParams.get('mode') || 'normal',
+      kind: url.searchParams.get('kind') || 'text',
+    };
+  }
+  if (req.method === 'POST') return req.json().catch(() => ({}));
+  return null;
+}
+
 export default async (req) => {
-  if (req.method !== 'POST') return json({ error:'Method not allowed' }, 405, { Allow:'POST' });
+  const body = await readInput(req);
+  if (!body) return json({ error:'Method not allowed' }, 405, { Allow:'GET, POST' });
   const apiKey = Netlify.env.get('OPENAI_API_KEY');
   if (!apiKey) return json({ error:'Neural German voice is not configured.', providerCode:'missing_openai_api_key' }, 503);
-  const body = await req.json().catch(() => ({}));
+
   const text = String(body.text || '').trim();
   const mode = body.mode === 'slow' ? 'slow' : 'normal';
   const kind = body.kind === 'letter' || isGermanLetter(text) ? 'letter' : 'text';
   if (!text) return json({ error:'Text is required.' }, 400);
   if (text.length > MAX_TEXT_LENGTH) return json({ error:'Text is too long.' }, 413);
+
   const speed = mode === 'slow' ? 0.94 : 1.0;
   const fingerprint = JSON.stringify({ pronunciationVersion:PRONUNCIATION_VERSION, model:MODEL, voice:VOICE, kind, mode, speed, text });
   const key = createHash('sha256').update(fingerprint).digest('hex');
   const store = cacheStore();
+
   try {
     const cached = await store.get(key, { type:'arrayBuffer' });
     if (cached) return new Response(cached, { headers:{ 'Content-Type':'audio/mpeg', 'Cache-Control':'public, max-age=31536000, immutable', 'X-Otto-TTS':'cache', 'X-Otto-Pronunciation':PRONUNCIATION_VERSION } });
   } catch (error) { console.warn('otto-tts cache read failed', error); }
+
   const payload = { model:MODEL, voice:VOICE, input:text, instructions:speechInstructions(mode,kind), response_format:'mp3', speed };
   const result = await requestSpeech(apiKey, payload);
   if (!result.response) return json({ error:'Neural German voice is temporarily unavailable.', ...(result.diagnostic || {}) }, 502);
+
   const audio = await result.response.arrayBuffer();
   try { await store.set(key, audio); } catch (error) { console.warn('otto-tts cache write failed', error); }
   return new Response(audio, { headers:{ 'Content-Type':'audio/mpeg', 'Cache-Control':'public, max-age=31536000, immutable', 'X-Otto-TTS':'generated', 'X-Otto-Pronunciation':PRONUNCIATION_VERSION } });
 };
 
-export const config = { path:'/api/otto-tts', method:'POST', rateLimit:{ windowLimit:40, windowSize:60, aggregateBy:['ip','domain'] } };
+export const config = { path:'/api/otto-tts', rateLimit:{ windowLimit:60, windowSize:60, aggregateBy:['ip','domain'] } };
