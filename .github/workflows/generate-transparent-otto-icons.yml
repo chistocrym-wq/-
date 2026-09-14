@@ -1,0 +1,41 @@
+name: Generate transparent Otto PWA icons
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/generate-transparent-otto-icons.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Create transparent square icons from the existing Otto image
+        run: |
+          python -m pip install --quiet pillow
+          python - <<'PY'
+          from PIL import Image
+          src = Image.open('public/otto/otto-home.webp').convert('RGBA')
+          for size in (192, 512):
+              scale = min(size / src.width, size / src.height)
+              w = max(1, round(src.width * scale))
+              h = max(1, round(src.height * scale))
+              fitted = src.resize((w, h), Image.Resampling.LANCZOS)
+              canvas = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+              canvas.alpha_composite(fitted, ((size - w) // 2, (size - h) // 2))
+              canvas.save(f'public/otto-icon-transparent-{size}.png', optimize=True)
+          PY
+      - name: Commit generated icons
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/otto-icon-transparent-192.png public/otto-icon-transparent-512.png
+          git commit -m "Generate transparent Otto PWA icons"
+          git push
