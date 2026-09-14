@@ -1,0 +1,2 @@
+Force Netlify production redeploy after client freeze-loop hotfix.
+Triggered 2026-09-14.
