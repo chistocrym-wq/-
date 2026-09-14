@@ -44,12 +44,23 @@ function speechInstructions(mode, kind) {
   ].join(' ');
 }
 
+function providerDiagnostic(status, detail) {
+  let code = '';
+  let type = '';
+  try {
+    const parsed = JSON.parse(detail || '{}');
+    code = String(parsed?.error?.code || '').slice(0, 100);
+    type = String(parsed?.error?.type || '').slice(0, 100);
+  } catch {}
+  return { providerStatus: Number(status) || 0, providerCode: code, providerType: type };
+}
+
 export default async (req) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405, { Allow: 'POST' });
 
   const apiKey = Netlify.env.get('OPENAI_API_KEY');
   const baseUrl = (Netlify.env.get('OPENAI_BASE_URL') || 'https://api.openai.com').replace(/\/$/, '');
-  if (!apiKey) return json({ error: 'Neural German voice is not configured.' }, 503);
+  if (!apiKey) return json({ error: 'Neural German voice is not configured.', providerCode: 'missing_openai_api_key' }, 503);
 
   const body = await req.json().catch(() => ({}));
   const text = String(body.text || '').trim();
@@ -99,8 +110,9 @@ export default async (req) => {
 
     if (!response.ok) {
       const detail = await response.text();
-      console.error('otto-tts provider error', response.status, detail.slice(0, 500));
-      return json({ error: 'Neural German voice is temporarily unavailable.' }, 502);
+      const diagnostic = providerDiagnostic(response.status, detail);
+      console.error('otto-tts provider error', diagnostic.providerStatus, diagnostic.providerCode, diagnostic.providerType);
+      return json({ error: 'Neural German voice is temporarily unavailable.', ...diagnostic }, 502);
     }
 
     const audio = await response.arrayBuffer();
@@ -119,8 +131,8 @@ export default async (req) => {
       },
     });
   } catch (error) {
-    console.error('otto-tts error', error);
-    return json({ error: 'Neural German voice is temporarily unavailable.' }, 502);
+    console.error('otto-tts network error', error?.name, error?.message);
+    return json({ error: 'Neural German voice is temporarily unavailable.', providerCode: 'network_error' }, 502);
   }
 };
 
