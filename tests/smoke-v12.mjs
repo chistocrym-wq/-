@@ -20,6 +20,12 @@ try {
   await waitForServer();
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+
+  // Local smoke tests the UI only. Netlify API/TTS is verified separately against production.
+  await page.route('**/api/**', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' });
+  });
+
   const errors = [];
   page.on('pageerror', (err) => errors.push(`pageerror: ${err.message}`));
   page.on('console', (msg) => { if (msg.type() === 'error') errors.push(`console: ${msg.text()}`); });
@@ -76,7 +82,6 @@ try {
     if (elapsed > 2500) throw new Error(`Dictionary roundtrip too slow: ${elapsed}ms on iteration ${i + 1}`);
   }
 
-  // Route/profile/more navigation must also stay responsive.
   for (const action of ['nav-route', 'nav-profile', 'nav-more', 'nav-home']) {
     await page.click(`[data-action="${action}"]`);
     await page.waitForTimeout(80);
