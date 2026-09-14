@@ -22,20 +22,20 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Run local interaction smoke
         run: node tests/smoke-v12.mjs
-      - name: Wait for production single-runtime deploy
+      - name: Wait for production stable runtime deploy
         shell: bash
         run: |
           set -e
           for i in $(seq 1 40); do
             html=$(curl -fsSL --max-time 10 "https://otto-start.netlify.app/?smoke=${GITHUB_SHA}" || true)
-            if echo "$html" | grep -q 'app-v14.js?v=16'; then
-              echo "V14 production HTML is live"
+            if echo "$html" | grep -q 'app-v12.js?v=17'; then
+              echo "Stable production HTML is live"
               exit 0
             fi
-            echo "Waiting for V14 production ($i)"
+            echo "Waiting for stable production ($i)"
             sleep 5
           done
-          echo "Production did not expose V14 runtime in time"
+          echo "Production did not expose stable runtime in time"
           exit 1
       - name: Verify German neural TTS endpoint
         shell: bash
