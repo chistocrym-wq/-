@@ -21,7 +21,7 @@ try {
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
 
-  // Local smoke tests the UI only. Netlify API/TTS is verified separately against production.
+  // UI smoke only. Live neural audio is verified separately against production.
   await page.route('**/api/**', async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' });
   });
@@ -33,35 +33,34 @@ try {
   await page.goto('http://127.0.0.1:4173/', { waitUntil: 'domcontentloaded', timeout: 15000 });
   await page.waitForSelector('[data-action="start-unit"]', { timeout: 8000 });
   const homeText = await page.locator('body').innerText();
-  if (!homeText.includes('Немецкий с нуля')) throw new Error('Beginner home copy missing');
+  if (!homeText.includes('немецкий с абсолютного нуля') && !homeText.includes('Немецкий с нуля')) throw new Error('Absolute-beginner home copy missing');
 
+  // Lesson 1 must really contain one easy word only.
   await page.click('[data-action="start-unit"]');
   await page.waitForSelector('[data-action="start-quiz"]');
   const lessonText = await page.locator('body').innerText();
-  for (const expected of ['Hallo', 'привет', 'Tschüss', 'пока']) {
-    if (!lessonText.includes(expected)) throw new Error(`First lesson missing ${expected}`);
+  if (!lessonText.includes('Hallo') || !lessonText.includes('привет')) throw new Error('First lesson must teach Hallo = привет');
+  for (const tooEarly of ['Tschüss', 'Entschuldigung', 'Familie', 'Bahnhof']) {
+    if (lessonText.includes(tooEarly)) throw new Error(`First lesson exposes ${tooEarly} too early`);
   }
-  if (lessonText.includes('Entschuldigung')) throw new Error('First lesson exposes advanced vocabulary too early');
 
+  // Every answer to “what does it mean?” must be Russian.
   await page.click('[data-action="start-quiz"]');
   await page.waitForSelector('[data-action="answer"]');
   for (let safety = 0; safety < 12; safety += 1) {
-    const resultVisible = await page.locator('[data-action="complete-unit"]').count();
-    if (resultVisible) break;
+    if (await page.locator('[data-action="complete-unit"]').count()) break;
     const options = page.locator('[data-action="answer"]');
     const count = await options.count();
     if (!count) throw new Error('Quiz has no answer options');
-    const labels = await options.allInnerTexts();
-    const forbidden = ['Hallo', 'Tschüss', 'danke', 'bitte', 'ja', 'nein'];
-    if (labels.some((label) => forbidden.includes(label.trim()))) {
-      throw new Error(`Meaning/listening quiz contains German answer option: ${labels.join(' | ')}`);
-    }
+    const labels = (await options.allInnerTexts()).map(x => x.trim());
+    const german = ['Hallo','Tschüss','danke','bitte','ja','nein','ich','du'];
+    if (labels.some((label) => german.includes(label))) throw new Error(`Quiz contains German answer option: ${labels.join(' | ')}`);
+    const promptBlock = await page.locator('.v12-quiz-card').innerText();
+    if (!promptBlock.includes('по-русски') && !promptBlock.includes('русском языке')) throw new Error('Quiz does not explicitly ask for Russian meaning');
     await options.first().click();
     await page.waitForSelector('[data-action="quiz-next"]');
     const feedback = await page.locator('.v12-feedback').innerText();
-    if (!feedback.includes('Hallo') && !feedback.includes('Tschüss')) {
-      throw new Error(`Feedback does not expose German + Russian meaning: ${feedback}`);
-    }
+    if (!feedback.includes('Hallo') || !feedback.includes('привет')) throw new Error(`Feedback must show German + Russian: ${feedback}`);
     await page.click('[data-action="quiz-next"]');
     await page.waitForTimeout(40);
   }
@@ -69,13 +68,19 @@ try {
   await page.click('[data-action="complete-unit"]');
   await page.waitForSelector('[data-action="nav-dictionary"]');
 
-  // Repeatedly open the dictionary and return home. This is the exact area that froze before.
-  for (let i = 0; i < 25; i += 1) {
+  // The next step must remain simple: ja / nein.
+  const afterFirst = await page.locator('body').innerText();
+  if (!afterFirst.includes('Да и нет')) throw new Error('Second beginner step is not “Да и нет”');
+
+  // Exact former freeze area: open dictionary and return 40 times.
+  for (let i = 0; i < 40; i += 1) {
     const t0 = Date.now();
     await page.click('[data-action="nav-dictionary"]');
     await page.waitForSelector('.v12-dict-toolbar', { timeout: 1500 });
     const cards = await page.locator('.v12-dict-card').count();
-    if (cards > 20) throw new Error(`Dictionary rendered too many cards: ${cards}`);
+    if (cards > 12) throw new Error(`Dictionary rendered too many cards: ${cards}`);
+    const dictText = await page.locator('body').innerText();
+    if (!dictText.includes('Hallo') || !dictText.includes('привет')) throw new Error('Dictionary lost the learned German/Russian pair');
     await page.click('[data-action="nav-home"]');
     await page.waitForSelector('[data-action="start-unit"]', { timeout: 1500 });
     const elapsed = Date.now() - t0;
@@ -88,7 +93,7 @@ try {
   }
 
   if (errors.length) throw new Error(`Browser errors:\n${errors.join('\n')}`);
-  console.log('Otto Start v12 browser smoke passed: lesson, Russian quiz answers, 25 dictionary roundtrips, navigation, no JS errors.');
+  console.log('Otto Start V14 browser smoke passed: absolute-zero lesson, Russian-only answers, 40 dictionary roundtrips, navigation, no JS errors.');
 } finally {
   if (browser) await browser.close();
   server.kill('SIGTERM');
