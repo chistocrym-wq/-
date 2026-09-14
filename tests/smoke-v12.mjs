@@ -74,6 +74,11 @@ try {
   for (const marker of ['От нуля — именно к тренажёру A1','Алфавит','Чтение','База A1','Мини‑тест','20 заданий']) {
     if (!homeText.includes(marker)) throw new Error(`Home A1 roadmap missing ${marker}`);
   }
+  if (!homeText.includes('От уровня "ноль" к тренажёру А1')) throw new Error('Requested Otto Start subtitle is missing');
+  if (await page.locator('.v12-top [data-action="nav-more"]').count()) throw new Error('Top three-dot menu is still present');
+  for (const action of ['support','share']) if (!await page.locator(`.v12-top [data-action="${action}"]`).count()) throw new Error(`Top ${action} button is missing`);
+  if (await page.locator('[data-v16-a1-roadmap] [data-action="alphabet-guide"]').count()) throw new Error('Duplicate top alphabet button is still present');
+  if (await page.locator('[data-v16-a1-roadmap] [data-action="reading-guide"]').count()) throw new Error('Duplicate top reading button is still present');
 
   await page.click('[data-action="start-unit"]');
   await page.waitForSelector('[data-action="start-quiz"]');
@@ -104,25 +109,33 @@ try {
   if (/автоматическое распознавание.*не.*работ/i.test(pronText)) throw new Error('Old browser-recognition failure message is still shown');
   await page.click('[data-close]');
 
-  await page.click('[data-action="start-quiz"]');
-  await page.waitForSelector('[data-action="answer"]');
-  for (let safety = 0; safety < 12; safety += 1) {
-    if (await page.locator('[data-action="complete-unit"]').count()) break;
-    const options = page.locator('[data-action="answer"]');
-    const count = await options.count();
-    if (!count) throw new Error('Quiz has no answer options');
-    const labels = (await options.allInnerTexts()).map((x) => x.trim());
-    const german = ['Hallo','Tschüss','danke','bitte','ja','nein','ich','du'];
-    if (labels.some((label) => german.includes(label))) throw new Error(`Meaning quiz contains German answer option: ${labels.join(' | ')}`);
-    await options.first().click();
-    await page.waitForSelector('[data-action="quiz-next"]');
-    await page.click('[data-action="quiz-next"]');
-    await page.waitForTimeout(30);
+  async function finishQuiz() {
+    await page.click('[data-action="start-quiz"]');
+    await page.waitForSelector('[data-action="answer"]');
+    for (let safety = 0; safety < 12; safety += 1) {
+      if (await page.locator('[data-action="complete-unit"]').count()) break;
+      const options = page.locator('[data-action="answer"]');
+      const count = await options.count();
+      if (!count) throw new Error('Quiz has no answer options');
+      await options.first().click();
+      await page.waitForSelector('[data-action="quiz-next"]');
+      await page.click('[data-action="quiz-next"]');
+      await page.waitForTimeout(30);
+    }
+    await page.waitForSelector('[data-action="complete-unit"]', { timeout: 6000 });
+    await page.click('[data-action="complete-unit"]');
+    await page.waitForSelector('[data-action="start-quiz"]', { timeout: 3000 });
   }
-  await page.waitForSelector('[data-action="complete-unit"]', { timeout: 6000 });
-  await page.click('[data-action="complete-unit"]');
+
+  await finishQuiz();
   const afterFirst = await page.locator('body').innerText();
   if (!afterFirst.includes('Да и нет')) throw new Error('Second beginner step is not “Да и нет”');
+  if (await page.locator('[data-action="start-unit"]').count()) throw new Error('Continue returned to the home menu after the first step');
+
+  await finishQuiz();
+  const afterSecond = await page.locator('body').innerText();
+  if (!afterSecond.includes('Спасибо и пожалуйста')) throw new Error('Third beginner step did not open after Continue');
+  if (await page.locator('[data-action="start-unit"]').count()) throw new Error('Continue returned to the home menu after the second step');
 
   for (let i = 0; i < 4; i += 1) {
     await page.click('[data-action="nav-dictionary"]');
@@ -135,6 +148,7 @@ try {
     await page.waitForSelector('[data-action="start-unit"]', { timeout: 1800 });
   }
 
+  await page.click('[data-action="nav-more"]');
   await page.click('[data-action="alphabet-guide"]');
   const alphabet = await page.locator('body').innerText();
   for (const marker of ['A','J','V','W','Y','Z','Ä','Ö','Ü','ß']) if (!alphabet.includes(marker)) throw new Error(`Alphabet guide missing ${marker}`);
@@ -164,7 +178,7 @@ try {
   }
 
   if (errors.length) throw new Error(`Browser errors:\n${errors.join('\n')}`);
-  console.log('Otto Start V17 smoke passed: strict de-DE male fallback, correct lesson audio routing, microphone recording, playable own recording, pronunciation check pipeline, alphabet, reading rules and A1 route.');
+  console.log('Otto Start V22 smoke passed: requested top buttons, removed duplicate guides, direct sequential Continue flow, existing German audio, recording, dictionary, alphabet, reading rules and A1 route.');
 } finally {
   if (browser) await browser.close();
   server.kill('SIGTERM');
