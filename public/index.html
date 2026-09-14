@@ -51,13 +51,14 @@
       const OTTO_HOLD=1200;
       const SPLASH_FADE_OUT=2300;
       let appReady=false;
+      let sequenceReady=false;
       let fadeRequested=false;
       const removeSplash=()=>{
         splash.remove();
         document.documentElement.classList.remove('otto-splash-active');
       };
       const beginFadeOut=()=>{
-        if(fadeRequested||!appReady)return;
+        if(fadeRequested||!appReady||!sequenceReady)return;
         fadeRequested=true;
         splash.classList.add('out');
         setTimeout(removeSplash,SPLASH_FADE_OUT+80);
@@ -68,7 +69,10 @@
       };
       setTimeout(()=>{
         splash.classList.add('show-otto');
-        setTimeout(beginFadeOut,OTTO_FADE_IN+OTTO_HOLD);
+        setTimeout(()=>{
+          sequenceReady=true;
+          beginFadeOut();
+        },OTTO_FADE_IN+OTTO_HOLD);
       },WHITE_HOLD);
       waitForApp();
     },{once:true});
