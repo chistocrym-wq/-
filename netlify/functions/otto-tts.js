@@ -6,7 +6,6 @@ const VOICE = 'marin';
 const STORE = 'otto-tts-cache-de-v3';
 const PRONUNCIATION_VERSION = 'de-DE-hochdeutsch-v3';
 const MAX_TEXT_LENGTH = 420;
-const OPENAI_SPEECH_URL = 'https://api.openai.com/v1/audio/speech';
 
 function json(data, status = 200, headers = {}) {
   return new Response(JSON.stringify(data), {
@@ -56,6 +55,39 @@ function providerDiagnostic(status, detail) {
   return { providerStatus: Number(status) || 0, providerCode: code, providerType: type };
 }
 
+function speechUrls() {
+  const configured = String(Netlify.env.get('OPENAI_BASE_URL') || '').trim().replace(/\/+$/, '');
+  if (!configured) return ['https://api.openai.com/v1/audio/speech'];
+  const urls = [`${configured}/audio/speech`];
+  if (!/\/v1$/i.test(configured)) urls.push(`${configured}/v1/audio/speech`);
+  return [...new Set(urls)];
+}
+
+async function requestSpeech(apiKey, payload) {
+  let lastDiagnostic = { providerStatus: 0, providerCode: '', providerType: '' };
+  for (const url of speechUrls()) {
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+      if (response.ok) return { response, url };
+      const detail = await response.text();
+      lastDiagnostic = providerDiagnostic(response.status, detail);
+      console.error('otto-tts provider error', lastDiagnostic.providerStatus, lastDiagnostic.providerCode, lastDiagnostic.providerType, url);
+      if (response.status !== 404) return { response: null, diagnostic: lastDiagnostic };
+    } catch (error) {
+      console.error('otto-tts network error', error?.name, error?.message, url);
+      lastDiagnostic = { providerStatus: 0, providerCode: 'network_error', providerType: '' };
+    }
+  }
+  return { response: null, diagnostic: lastDiagnostic };
+}
+
 export default async (req) => {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405, { Allow: 'POST' });
 
@@ -91,49 +123,35 @@ export default async (req) => {
     console.warn('otto-tts cache read failed', error);
   }
 
-  try {
-    const response = await fetch(OPENAI_SPEECH_URL, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        voice: VOICE,
-        input: text,
-        instructions: speechInstructions(mode, kind),
-        response_format: 'mp3',
-        speed,
-      }),
-    });
+  const payload = {
+    model: MODEL,
+    voice: VOICE,
+    input: text,
+    instructions: speechInstructions(mode, kind),
+    response_format: 'mp3',
+    speed,
+  };
 
-    if (!response.ok) {
-      const detail = await response.text();
-      const diagnostic = providerDiagnostic(response.status, detail);
-      console.error('otto-tts provider error', diagnostic.providerStatus, diagnostic.providerCode, diagnostic.providerType);
-      return json({ error: 'Neural German voice is temporarily unavailable.', ...diagnostic }, 502);
-    }
-
-    const audio = await response.arrayBuffer();
-    try {
-      await store.set(key, audio);
-    } catch (error) {
-      console.warn('otto-tts cache write failed', error);
-    }
-
-    return new Response(audio, {
-      headers: {
-        'Content-Type': 'audio/mpeg',
-        'Cache-Control': 'public, max-age=31536000, immutable',
-        'X-Otto-TTS': 'generated',
-        'X-Otto-Pronunciation': PRONUNCIATION_VERSION,
-      },
-    });
-  } catch (error) {
-    console.error('otto-tts network error', error?.name, error?.message);
-    return json({ error: 'Neural German voice is temporarily unavailable.', providerCode: 'network_error' }, 502);
+  const result = await requestSpeech(apiKey, payload);
+  if (!result.response) {
+    return json({ error: 'Neural German voice is temporarily unavailable.', ...(result.diagnostic || {}) }, 502);
   }
+
+  const audio = await result.response.arrayBuffer();
+  try {
+    await store.set(key, audio);
+  } catch (error) {
+    console.warn('otto-tts cache write failed', error);
+  }
+
+  return new Response(audio, {
+    headers: {
+      'Content-Type': 'audio/mpeg',
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'X-Otto-TTS': 'generated',
+      'X-Otto-Pronunciation': PRONUNCIATION_VERSION,
+    },
+  });
 };
 
 export const config = {
