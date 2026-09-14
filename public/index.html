@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ru">
+<html lang="ru" class="otto-splash-active">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -20,11 +20,12 @@
   <link rel="stylesheet" href="/requested-ui-v22.css?v=23" />
   <style>
     html,body{background:#f5f8f6}
-    #otto-splash-stable{position:fixed;inset:0;z-index:60000;display:grid;place-items:center;background:#f5f8f6;opacity:1;transition:opacity .48s ease;pointer-events:none}
+    html.otto-splash-active,html.otto-splash-active body{background:#fff}
+    #otto-splash-stable{position:fixed;inset:0;z-index:60000;display:grid;place-items:center;background:#fff;opacity:1;transition:opacity 2.3s ease-in-out;pointer-events:none}
     #otto-splash-stable.out{opacity:0}
-    #otto-splash-stable div{width:128px;height:128px;border-radius:50%;display:grid;place-items:center;background:#edf6f4;border:1px solid #dbeae7;box-shadow:0 18px 52px rgba(23,63,67,.10)}
-    #otto-splash-stable img{width:112px;height:112px;object-fit:contain;opacity:0;transform:scale(.96);animation:otto-splash-in .48s ease-out forwards}
-    @keyframes otto-splash-in{to{opacity:1;transform:scale(1)}}
+    #otto-splash-stable div{width:128px;height:128px;display:grid;place-items:center;background:transparent;border:0;box-shadow:none}
+    #otto-splash-stable img{width:112px;height:112px;object-fit:contain;opacity:0;transition:opacity 1.4s ease-in-out}
+    #otto-splash-stable.show-otto img{opacity:1}
   </style>
 </head>
 <body>
@@ -45,10 +46,31 @@
     window.addEventListener('DOMContentLoaded',()=>{
       const splash=document.getElementById('otto-splash-stable');
       if(!splash)return;
-      const started=performance.now();
-      const finish=()=>{const wait=Math.max(0,650-(performance.now()-started));setTimeout(()=>{splash.classList.add('out');setTimeout(()=>splash.remove(),500)},wait)};
-      const check=()=>document.getElementById('app')?.children.length?finish():setTimeout(check,30);
-      check();setTimeout(finish,2200);
+      const WHITE_HOLD=800;
+      const OTTO_FADE_IN=1400;
+      const OTTO_HOLD=1200;
+      const SPLASH_FADE_OUT=2300;
+      let appReady=false;
+      let fadeRequested=false;
+      const removeSplash=()=>{
+        splash.remove();
+        document.documentElement.classList.remove('otto-splash-active');
+      };
+      const beginFadeOut=()=>{
+        if(fadeRequested||!appReady)return;
+        fadeRequested=true;
+        splash.classList.add('out');
+        setTimeout(removeSplash,SPLASH_FADE_OUT+80);
+      };
+      const waitForApp=()=>{
+        if(document.getElementById('app')?.children.length){appReady=true;beginFadeOut();return;}
+        setTimeout(waitForApp,30);
+      };
+      setTimeout(()=>{
+        splash.classList.add('show-otto');
+        setTimeout(beginFadeOut,OTTO_FADE_IN+OTTO_HOLD);
+      },WHITE_HOLD);
+      waitForApp();
     },{once:true});
   </script>
 </body>
