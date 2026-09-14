@@ -20,6 +20,27 @@
     ['двойная согласная','гласная перед ней обычно короткая','Две одинаковые согласные не нужно произносить вдвое дольше. Они часто показывают, что предыдущая гласная короткая.',['Mutter','kommen','bitte']]
   ];
   const esc = (s='') => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const plain = (s='') => String(s).toLocaleLowerCase('de-DE').replace(/^(der|die|das)\s+/i,'').trim();
+
+  function readingTipsFor(source='') {
+    const w = plain(source);
+    const tips = [];
+    const add = (x) => { if (x && !tips.includes(x)) tips.push(x); };
+    if (w.includes('tsch')) add('tsch → один звук, близкий к «ч».');
+    if (w.includes('au') && !w.includes('äu')) add('au → примерно «ау».');
+    if (w.includes('qu')) add('qu → обычно «кв».');
+    if (w.includes('ck')) add('ck → один «к»; гласная перед ним обычно короткая.');
+    if (w.includes('tz')) add('tz → «ц».');
+    if (w.includes('pf')) add('pf → произносим «п» и «ф» вместе.');
+    if (w.includes('ng')) add('ng → носовой [ŋ], без отдельного «н-г».');
+    else if (w.includes('nk')) add('nk → носовой [ŋ] + k.');
+    if (/^s[aeiouäöü]/.test(w)) add('s перед гласной в начале часто звучит звонко, ближе к «з».');
+    if (/[aeiouäöü]h/.test(w)) add('h после гласной часто показывает, что гласная долгая.');
+    if (/ig$/.test(w)) add('конечное -ig в стандартном произношении часто звучит как [ɪç].');
+    if (/[bdg]$/.test(w)) add('b / d / g в конце слова обычно оглушаются.');
+    if (/(bb|dd|ff|gg|kk|ll|mm|nn|pp|rr|ss|tt)/.test(w)) add('двойная согласная часто показывает короткую гласную перед ней.');
+    return tips.slice(0,2);
+  }
 
   function addHome() {
     const app = root.querySelector('[data-v15-screen="Главная"]');
@@ -56,7 +77,25 @@
     main.appendChild(box);
   }
 
-  function enhance(){ addHome(); addReading(); }
+  function addContextReadingTips() {
+    root.querySelectorAll('.v12-word-card, .v12-dict-card').forEach((card) => {
+      if (card.querySelector('[data-v16-context-rule]')) return;
+      const word = card.querySelector('h3')?.textContent?.trim() || '';
+      const tips = readingTipsFor(word);
+      if (!tips.length) return;
+      const existing = card.querySelector('.v12-rule')?.textContent || '';
+      const fresh = tips.filter((tip) => !existing.includes(tip.split('→')[0].trim()));
+      if (!fresh.length) return;
+      const el = document.createElement('div');
+      el.className = 'v12-rule v16-auto-rule';
+      el.dataset.v16ContextRule = '1';
+      el.innerHTML = `<b>Заметьте при чтении:</b> ${esc(fresh.join(' '))}`;
+      const actions = card.querySelector('.v12-actions, .v12-dict-card-actions');
+      if (actions) card.insertBefore(el, actions); else card.appendChild(el);
+    });
+  }
+
+  function enhance(){ addHome(); addReading(); addContextReadingTips(); }
   let pending=false;
   const schedule=()=>{if(pending)return;pending=true;requestAnimationFrame(()=>{pending=false;try{enhance()}catch{}})};
   new MutationObserver(schedule).observe(root,{childList:true,subtree:true});
