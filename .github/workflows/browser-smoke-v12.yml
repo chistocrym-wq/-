@@ -8,7 +8,7 @@ on:
 jobs:
   smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 14
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,35 +20,55 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Run local interaction smoke
+      - name: Run local V15 interaction smoke
         run: node tests/smoke-v12.mjs
-      - name: Wait for production stable runtime deploy
+      - name: Wait for production V15 deploy
         shell: bash
         run: |
           set -e
-          for i in $(seq 1 40); do
+          for i in $(seq 1 45); do
             html=$(curl -fsSL --max-time 10 "https://otto-start.netlify.app/?smoke=${GITHUB_SHA}" || true)
-            if echo "$html" | grep -q 'app-v12.js?v=17'; then
-              echo "Stable production HTML is live"
+            if echo "$html" | grep -q 'app-v15.js?v=18'; then
+              echo "V15 production HTML is live"
               exit 0
             fi
-            echo "Waiting for stable production ($i)"
+            echo "Waiting for V15 production ($i)"
             sleep 5
           done
-          echo "Production did not expose stable runtime in time"
+          echo "Production did not expose V15 runtime in time"
           exit 1
-      - name: Verify German neural TTS endpoint
+      - name: Verify German neural TTS GET endpoint
         shell: bash
         run: |
           set -e
-          status=$(curl -sS --max-time 30 -D tts-headers.txt -o tts.mp3 -w "%{http_code}" \
-            -X POST "https://otto-start.netlify.app/api/otto-tts" \
-            -H "Content-Type: application/json" \
-            --data '{"text":"Hallo","mode":"slow"}')
+          status=$(curl -sS --max-time 35 -D tts-headers.txt -o tts.mp3 -w "%{http_code}" \
+            "https://otto-start.netlify.app/api/otto-tts?text=Hallo&mode=normal&kind=text&v=5")
           cat tts-headers.txt
           test "$status" = "200" || { echo "TTS HTTP $status"; cat tts.mp3; exit 1; }
           grep -qi '^content-type: audio/mpeg' tts-headers.txt || { echo "TTS did not return MP3"; exit 1; }
-          grep -qi '^x-otto-pronunciation: de-DE-hochdeutsch-v4' tts-headers.txt || { echo "Wrong pronunciation version"; exit 1; }
+          grep -qi '^x-otto-pronunciation: de-DE-hochdeutsch-v5' tts-headers.txt || { echo "Wrong pronunciation version"; exit 1; }
           size=$(wc -c < tts.mp3)
           test "$size" -gt 1000 || { echo "TTS audio unexpectedly small: $size"; exit 1; }
-          echo "German TTS v4 returned $size bytes"
+          echo "German TTS v5 returned $size bytes"
+      - name: Verify production browser actually plays audio
+        env:
+          OTTO_START_URL: https://otto-start.netlify.app/
+        run: node tests/production-media-v15.mjs
+      - name: Verify pronunciation provider with real audio
+        shell: bash
+        run: |
+          set -e
+          python3 - <<'PY'
+          import base64, json
+          with open('tts.mp3','rb') as f:
+              audio = base64.b64encode(f.read()).decode('ascii')
+          with open('pron-request.json','w',encoding='utf-8') as f:
+              json.dump({'audioBase64': audio, 'mimeType':'audio/mpeg', 'expected':'Hallo', 'hints':[]}, f, ensure_ascii=False)
+          PY
+          status=$(curl -sS --max-time 45 -o pron-response.json -w "%{http_code}" \
+            -X POST "https://otto-start.netlify.app/api/otto-start-pronunciation" \
+            -H "Content-Type: application/json" \
+            --data-binary @pron-request.json)
+          cat pron-response.json
+          test "$status" = "200" || { echo "Pronunciation HTTP $status"; exit 1; }
+          node -e "const p=require('./pron-response.json'); if(!['good','retry','slower'].includes(p.status)) throw new Error('Bad pronunciation status'); if(typeof p.feedbackRu!=='string'||!p.feedbackRu) throw new Error('Missing feedback'); console.log('Pronunciation provider returned',p.status,'transcript=',p.transcript)"
