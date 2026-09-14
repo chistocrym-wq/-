@@ -1,4 +1,4 @@
-const VERSION = 'otto-start-offline-v12-1';
+const VERSION = 'otto-start-offline-v12-2';
 const SHELL_CACHE = `${VERSION}-shell`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 
@@ -12,6 +12,7 @@ const CORE = [
   '/course-data-extra-v8.js?v=8',
   '/course-data-core-v8.js?v=8',
   '/speech-v12.js?v=12',
+  '/cache-reset-v13.js?v=13',
   '/pwa-v12.js?v=12',
   '/app-v12.js?v=12',
   '/otto-icon-192.webp',
@@ -27,7 +28,7 @@ async function warmCore() {
   await Promise.allSettled(CORE.map(async (url) => {
     try {
       const request = new Request(url, { cache: 'reload' });
-      const response = await fetch(request);
+      const response = await fetch(request, { cache: 'no-store' });
       if (response.ok) await cache.put(request, response.clone());
     } catch (_) {}
   }));
@@ -70,21 +71,14 @@ async function networkFirstNavigation(request) {
   }
 }
 
-async function cacheFirstWithRefresh(request) {
-  const cached = await caches.match(request);
+async function networkFirstStatic(request) {
   const cache = await caches.open(RUNTIME_CACHE);
-  if (cached) {
-    fetch(request, { cache: 'no-store' }).then((response) => {
-      if (response && response.ok) cache.put(request, response.clone());
-    }).catch(() => {});
-    return cached;
-  }
   try {
     const response = await fetch(request, { cache: 'no-store' });
     if (response && response.ok) await cache.put(request, response.clone());
     return response;
   } catch (_) {
-    return cached || Response.error();
+    return (await cache.match(request)) || (await caches.match(request)) || Response.error();
   }
 }
 
@@ -102,7 +96,7 @@ self.addEventListener('fetch', (event) => {
 
   const isStatic = /\.(?:js|css|webp|png|jpg|jpeg|svg|ico|webmanifest|json|woff2?)$/i.test(url.pathname);
   if (isStatic || CORE.some((entry) => new URL(entry, self.location.origin).pathname === url.pathname)) {
-    event.respondWith(cacheFirstWithRefresh(request));
+    event.respondWith(networkFirstStatic(request));
   }
 });
 
