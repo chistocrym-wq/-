@@ -13,10 +13,10 @@
   <link rel="icon" href="/otto-icon-192.webp" type="image/webp" />
   <link rel="preload" as="image" href="/otto/otto-home.webp" type="image/webp" />
   <link rel="preload" as="image" href="/otto/otto-guide.webp" type="image/webp" />
-  <link rel="stylesheet" href="/otto-v12.css?v=15" />
+  <link rel="stylesheet" href="/otto-v12.css?v=16" />
   <style>
     html,body{background:#f5f8f6}
-    #otto-splash-stable{position:fixed;inset:0;z-index:60000;display:grid;place-items:center;background:#f5f8f6;opacity:1;transition:opacity .28s ease;pointer-events:none}
+    #otto-splash-stable{position:fixed;inset:0;z-index:60000;display:grid;place-items:center;background:#f5f8f6;opacity:1;transition:opacity .24s ease;pointer-events:none}
     #otto-splash-stable.out{opacity:0}
     #otto-splash-stable div{width:128px;height:128px;border-radius:50%;display:grid;place-items:center;background:#edf6f4;border:1px solid #dbeae7;box-shadow:0 18px 52px rgba(23,63,67,.10)}
     #otto-splash-stable img{width:112px;height:112px;object-fit:contain}
@@ -26,25 +26,21 @@
   <div id="otto-splash-stable" aria-hidden="true"><div><img src="/otto/otto-home.webp" alt=""></div></div>
   <div id="app"></div>
 
-  <script src="/client-log-v12.js?v=15" defer></script>
-  <script src="/course-data-v8.js?v=8" defer></script>
-  <script src="/course-data-extra-v8.js?v=8" defer></script>
-  <script src="/course-data-core-v8.js?v=8" defer></script>
-  <script src="/sw-kill-v14.js?v=15" defer></script>
-  <script src="/speech-v12.js?v=15" defer></script>
-  <script src="/app-v12.js?v=15" defer></script>
+  <script src="/client-log-v14.js?v=16" defer></script>
+  <script src="/runtime-v14.js?v=16" defer></script>
+  <script src="/course-data-v8.js?v=16" defer></script>
+  <script src="/course-data-extra-v8.js?v=16" defer></script>
+  <script src="/course-data-core-v8.js?v=16" defer></script>
+  <script src="/speech-v14.js?v=16" defer></script>
+  <script src="/app-v14.js?v=16" defer></script>
   <script>
     window.addEventListener('DOMContentLoaded',()=>{
       const splash=document.getElementById('otto-splash-stable');
       if(!splash)return;
       const started=performance.now();
-      const finish=()=>{
-        const wait=Math.max(0,350-(performance.now()-started));
-        setTimeout(()=>{splash.classList.add('out');setTimeout(()=>splash.remove(),280)},wait);
-      };
-      const check=()=>document.getElementById('app')?.children.length?finish():setTimeout(check,35);
-      check();
-      setTimeout(finish,1500);
+      const finish=()=>{const wait=Math.max(0,300-(performance.now()-started));setTimeout(()=>{splash.classList.add('out');setTimeout(()=>splash.remove(),250)},wait)};
+      const check=()=>document.getElementById('app')?.children.length?finish():setTimeout(check,30);
+      check();setTimeout(finish,1400);
     },{once:true});
   </script>
 </body>
