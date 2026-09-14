@@ -20,35 +20,38 @@ jobs:
         run: |
           npm install --no-save playwright
           npx playwright install --with-deps chromium
-      - name: Run local V16 interaction smoke
+      - name: Run local V17 interaction smoke
         run: node tests/smoke-v12.mjs
-      - name: Wait for production V16 deploy
+      - name: Wait for production V17 deploy
         shell: bash
         run: |
           set -e
           for i in $(seq 1 45); do
             html=$(curl -fsSL --max-time 10 "https://otto-start.netlify.app/?smoke=${GITHUB_SHA}" || true)
-            if echo "$html" | grep -q 'speech-v16.js?v=19' && echo "$html" | grep -q 'curriculum-v16.js?v=19'; then
-              echo "V16 production HTML is live"
+            if echo "$html" | grep -q 'speech-v17.js?v=20' && echo "$html" | grep -q 'curriculum-v16.js?v=20'; then
+              echo "V17 production HTML is live"
               exit 0
             fi
-            echo "Waiting for V16 production ($i)"
+            echo "Waiting for V17 production ($i)"
             sleep 5
           done
-          echo "Production did not expose V16 runtime in time"
+          echo "Production did not expose V17 runtime in time"
           exit 1
-      - name: Verify production V16 assets
+      - name: Verify production V17 assets
         shell: bash
         run: |
           set -e
-          curl -fsSL --max-time 20 "https://otto-start.netlify.app/speech-v16.js?v=19" -o speech-v16.js
-          curl -fsSL --max-time 20 "https://otto-start.netlify.app/curriculum-v16.js?v=19" -o curriculum-v16.js
-          curl -fsSL --max-time 20 "https://otto-start.netlify.app/curriculum-v16.css?v=19" -o curriculum-v16.css
-          grep -q 'speechSynthesis' speech-v16.js
-          grep -q 'getUserMedia' speech-v16.js
-          grep -q 'MediaRecorder' speech-v16.js
-          grep -q 'data-play-own' speech-v16.js
+          curl -fsSL --max-time 20 "https://otto-start.netlify.app/speech-v17.js?v=20" -o speech-v17.js
+          curl -fsSL --max-time 20 "https://otto-start.netlify.app/curriculum-v16.js?v=20" -o curriculum-v16.js
+          curl -fsSL --max-time 20 "https://otto-start.netlify.app/curriculum-v16.css?v=20" -o curriculum-v16.css
+          grep -q 'MALE_DE_NAMES' speech-v17.js
+          grep -q 'browserMaleSpeak' speech-v17.js
+          grep -q 'getUserMedia' speech-v17.js
+          grep -q 'MediaRecorder' speech-v17.js
+          grep -q 'data-own-audio controls' speech-v17.js
+          grep -q 'Прослушать мою запись' speech-v17.js
+          if grep -q 'Автоматическое распознавание в этом браузере сейчас недоступно' speech-v17.js; then exit 1; fi
           grep -q 'От нуля — именно к тренажёру A1' curriculum-v16.js
           grep -q 'Ещё важные особенности для A1' curriculum-v16.js
           grep -q 'v16-a1-roadmap' curriculum-v16.css
-          echo "Production V16 fallback audio, recording, A1 route and reading assets are published"
+          echo "Production V17 strict German male voice and self-recording playback are published"
