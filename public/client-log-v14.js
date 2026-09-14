@@ -41,5 +41,7 @@
   },true);
 
   window.addEventListener('load',()=>send('page-ready',{message:'Otto Start client logger v14 ready'}),{once:true});
-  window.OttoClientLogV14={send,session};
+  const api={send,session};
+  window.OttoClientLogV14=api;
+  window.OttoClientLogV12=api;
 })();
