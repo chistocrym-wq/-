@@ -1,0 +1,24 @@
+name: TTS Quick Temp
+on:
+  push:
+    branches: [main]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify live German TTS
+        run: |
+          set -e
+          status=$(curl -sS --max-time 45 -D headers.txt -o audio.wav -w "%{http_code}" "https://otto-start.netlify.app/api/otto-tts?text=Hallo&mode=normal&kind=text&v=7&quick=${GITHUB_SHA}")
+          cat headers.txt
+          echo HTTP=$status
+          if [ "$status" != "200" ]; then cat audio.wav; exit 1; fi
+          grep -qi '^content-type: audio/wav' headers.txt
+          grep -qi '^x-otto-pronunciation: de-DE-hochdeutsch-v7' headers.txt
+          python3 - <<'PY'
+          import wave
+          with wave.open('audio.wav','rb') as w:
+              print('WAV',w.getnchannels(),w.getframerate(),w.getnframes())
+              assert w.getnframes()>1000
+          PY
+          echo OK
