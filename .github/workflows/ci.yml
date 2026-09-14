@@ -65,7 +65,7 @@ jobs:
           if (!bridge.includes('От нуля — именно к тренажёру A1') || !bridge.includes('Ещё важные особенности для A1')) throw new Error('visible A1 route or reading extras missing');
           for (const rule of ['au','tsch','qu','ck','tz','pf','ng / nk','гласная + h','-ig в конце']) if (!bridge.includes(rule)) throw new Error(`extra reading feature missing ${rule}`);
           if (!app.includes('Мини‑тест готовности к Otto A1') || !app.includes('score>=80') || !app.includes('>=60')) throw new Error('A1 readiness test missing');
-          if (!speech.includes('MALE_DE_NAMES') || !speech.includes('Microsoft') || !speech.includes("utterance.lang = 'de-DE'")) throw new Error('strict German male browser voice selection missing');
+          if (!speech.includes('MALE_DE_NAMES') || !speech.includes('Microsoft') || !speech.includes("utterance.lang='de-DE'")) throw new Error('strict German male browser voice selection missing');
           if (!speech.includes('serverSpeak(clean') || speech.indexOf('serverSpeak(clean') > speech.indexOf('browserMaleSpeak(clean')) throw new Error('neural server voice is not first priority');
           if (!speech.includes('getUserMedia') || !speech.includes('MediaRecorder') || !speech.includes('/api/otto-start-pronunciation')) throw new Error('real recording pipeline missing');
           if (!speech.includes('data-own-audio controls') || !speech.includes('data-play-own') || !speech.includes('Это именно ваша запись с микрофона')) throw new Error('own-recording playback controls missing');
