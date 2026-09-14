@@ -37,30 +37,38 @@ jobs:
           done
           echo "Production did not expose V15 runtime in time"
           exit 1
-      - name: Verify German neural TTS GET endpoint
+      - name: Verify real German WAV endpoint
         shell: bash
         run: |
           set -e
-          status=$(curl -sS --max-time 35 -D tts-headers.txt -o tts.mp3 -w "%{http_code}" \
-            "https://otto-start.netlify.app/api/otto-tts?text=Hallo&mode=normal&kind=text&v=5")
+          status=$(curl -sS --max-time 45 -D tts-headers.txt -o tts.wav -w "%{http_code}" \
+            "https://otto-start.netlify.app/api/otto-tts?text=Hallo&mode=normal&kind=text&v=6&run=${GITHUB_SHA}")
           cat tts-headers.txt
-          test "$status" = "200" || { echo "TTS HTTP $status"; cat tts.mp3; exit 1; }
-          grep -qi '^content-type: audio/mpeg' tts-headers.txt || { echo "TTS did not return MP3"; exit 1; }
-          grep -qi '^x-otto-pronunciation: de-DE-hochdeutsch-v5' tts-headers.txt || { echo "Wrong pronunciation version"; exit 1; }
-          size=$(wc -c < tts.mp3)
+          test "$status" = "200" || { echo "TTS HTTP $status"; cat tts.wav; exit 1; }
+          grep -qi '^content-type: audio/wav' tts-headers.txt || { echo "TTS did not return WAV"; exit 1; }
+          grep -qi '^x-otto-pronunciation: de-DE-hochdeutsch-v6' tts-headers.txt || { echo "Wrong pronunciation version"; exit 1; }
+          size=$(wc -c < tts.wav)
           test "$size" -gt 1000 || { echo "TTS audio unexpectedly small: $size"; exit 1; }
-          file tts.mp3
-          echo "German TTS v5 returned $size bytes"
+          python3 - <<'PY'
+          import wave
+          with wave.open('tts.wav','rb') as w:
+              assert w.getnchannels() == 1
+              assert w.getsampwidth() == 2
+              assert w.getframerate() == 24000
+              assert w.getnframes() > 1000
+              print('Verified WAV:', w.getnframes(), 'frames')
+          PY
+          echo "German TTS v6 returned verified WAV: $size bytes"
       - name: Verify pronunciation provider with real generated German audio
         shell: bash
         run: |
           set -e
           python3 - <<'PY'
           import base64, json
-          with open('tts.mp3','rb') as f:
+          with open('tts.wav','rb') as f:
               audio = base64.b64encode(f.read()).decode('ascii')
           with open('pron-request.json','w',encoding='utf-8') as f:
-              json.dump({'audioBase64': audio, 'mimeType':'audio/mpeg', 'expected':'Hallo', 'hints':[]}, f, ensure_ascii=False)
+              json.dump({'audioBase64': audio, 'mimeType':'audio/wav', 'expected':'Hallo', 'hints':[]}, f, ensure_ascii=False)
           PY
           status=$(curl -sS --max-time 45 -o pron-response.json -w "%{http_code}" \
             -X POST "https://otto-start.netlify.app/api/otto-start-pronunciation" \
