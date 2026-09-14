@@ -20,9 +20,14 @@
         const actions = document.createElement('div');
         actions.className = 'v22-top-actions';
         actions.dataset.v22TopActions = '1';
-        actions.innerHTML = '<button class="v12-btn secondary small" type="button" data-action="support">Поддержка</button><button class="v12-btn secondary small" type="button" data-action="share">Поделиться Отто</button>';
+        actions.innerHTML = '<button class="v12-btn secondary small" type="button" data-action="support">Поддержка</button><button class="v12-btn secondary small" type="button" data-action="share">Поделиться</button>';
         top.appendChild(actions);
       }
+    }
+
+    const ottoRule = root.querySelector('.v12-app[data-v15-screen="Главная"] .v12-note');
+    if (ottoRule && ottoRule.textContent.trim().startsWith('Правило Otto:')) {
+      ottoRule.innerHTML = '<b>Правило Otto:</b> Главное — регулярность. Даже короткие, но системные занятия дают устойчивый результат.';
     }
 
     const roadmapActions = root.querySelector('[data-v16-a1-roadmap] .v16-a1-actions');
