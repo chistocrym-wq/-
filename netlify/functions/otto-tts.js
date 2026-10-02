@@ -93,10 +93,11 @@ async function synthesizeOpenAI(apiKey, text, mode, kind) {
   }
 }
 
-async function synthesizeGemini(apiKey, text, mode, kind) {
+async function synthesizeGemini(apiKey, baseUrl, text, mode, kind) {
   if (!apiKey) return { ok:false, code:'missing_gemini_api_key' };
   try {
-    const response=await fetch('https://generativelanguage.googleapis.com/v1beta/interactions',{
+    const base=String(baseUrl||'https://generativelanguage.googleapis.com').replace(/\/$/,'');
+    const response=await fetch(`${base}/v1beta/interactions`,{
       method:'POST',
       headers:{'x-goog-api-key':apiKey,'Content-Type':'application/json'},
       body:JSON.stringify({
@@ -153,7 +154,7 @@ export default async(req)=>{
   }catch(error){console.warn('otto-tts cache read failed',error?.message||error)}
 
   const openaiResult=await synthesizeOpenAI(Netlify.env.get('OPENAI_API_KEY'),text,mode,kind);
-  const geminiResult=openaiResult.ok ? null : await synthesizeGemini(Netlify.env.get('GEMINI_API_KEY'),text,mode,kind);
+  const geminiResult=openaiResult.ok ? null : await synthesizeGemini(Netlify.env.get('GEMINI_API_KEY'),Netlify.env.get('GOOGLE_GEMINI_BASE_URL'),text,mode,kind);
   const result=openaiResult.ok ? openaiResult : geminiResult;
   if(!result?.ok)return json({
     error:'High-quality German male voice is not configured on the server.',
