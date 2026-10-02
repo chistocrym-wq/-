@@ -15,6 +15,33 @@ async function has(page,marker){
   const body=(await page.locator('body').innerText()).toLocaleLowerCase('ru-RU');
   if(!body.includes(String(marker).toLocaleLowerCase('ru-RU')))remember('Missing UI marker: '+marker);
 }
+async function expectAudioClick(page,locator,label){
+  const before=await page.evaluate(()=>window.__ottoPlayCount||0);
+  const responsePromise=page.waitForResponse(r=>r.url().includes('/api/otto-tts?')&&r.request().method()==='GET',{timeout:15000}).catch(()=>null);
+  await locator.click({force:true});
+  const response=await responsePromise;
+  if(response){
+    const ct=response.headers()['content-type']||'';
+    console.log('TTS',label,response.status(),ct,response.url());
+    if(response.status()!==200)remember(label+' TTS returned HTTP '+response.status());
+    if(!ct.toLowerCase().startsWith('audio/'))remember(label+' TTS returned non-audio '+ct);
+  }else{
+    console.log('TTS',label,'no network response (may be cached)');
+  }
+  await page.waitForTimeout(250);
+  const after=await page.evaluate(()=>window.__ottoPlayCount||0);
+  if(after<=before)remember(label+' did not invoke real media playback');
+}
+async function imageCheck(page,selector,label){
+  const r=await page.locator(selector).evaluate(el=>{
+    const b=el.getBoundingClientRect(),p=el.parentElement?.getBoundingClientRect();
+    const cs=getComputedStyle(el);
+    return {b:{x:b.x,y:b.y,width:b.width,height:b.height,right:b.right,bottom:b.bottom},p:p?{x:p.x,y:p.y,width:p.width,height:p.height,right:p.right,bottom:p.bottom}:null,fit:cs.objectFit};
+  }).catch(()=>null);
+  if(!r)return remember(label+' image missing');
+  if(r.fit!=='contain')remember(label+' must use object-fit: contain');
+  if(r.b.x< -2||r.b.right>innerWidth+2||r.b.y< -2)remember(label+' image is outside viewport: '+JSON.stringify(r));
+}
 async function layoutCheck(page,width){
   await page.setViewportSize({width,height:844});
   await page.waitForTimeout(120);
@@ -36,6 +63,11 @@ try{
  const page=await context.newPage();
  page.on('pageerror',e=>remember('pageerror: '+e.message));
 
+ await page.addInitScript(()=>{
+   window.__ottoPlayCount=0;
+   const original=HTMLMediaElement.prototype.play;
+   HTMLMediaElement.prototype.play=function(){window.__ottoPlayCount=(window.__ottoPlayCount||0)+1;return original.apply(this,arguments)};
+ });
  await page.goto(url,{waitUntil:'domcontentloaded',timeout:30000});
  await page.evaluate(()=>localStorage.clear());
  await page.reload({waitUntil:'domcontentloaded'});
@@ -47,28 +79,36 @@ try{
  await has(page,'Сначала увидим порядок');
  for(const m of ['A','B','C','Z','Ä','Ö','Ü','ß']) await has(page,m);
 
- await setState(page,{screen:'alphabet',alphaStep:1});
- await has(page,'A');
- await has(page,'Anna');
+ await setState(page,{screen:'alphabet',alphaStep:23});
+ await has(page,'W');
+ await has(page,'Wasser');
+ await expectAudioClick(page,page.getByRole('button',{name:/🔊 Буква/}),'W');
+ await expectAudioClick(page,page.getByRole('button',{name:/🔊 Wasser/}),'Wasser');
 
- const ttsResp=page.waitForResponse(r=>r.url().includes('/api/otto-tts?')&&r.request().method()==='GET',{timeout:15000}).catch(()=>null);
- await page.getByRole('button',{name:/🔊 Буква/}).click();
- const tts=await ttsResp;
- if(!tts)remember('No TTS request after letter click');
- else console.log('TTS LETTER',tts.status(),tts.headers()['content-type']||'');
+ await setState(page,{screen:'verb',verbStep:5});
+ await has(page,'Ich wohne in Berlin.');
+ await expectAudioClick(page,page.getByRole('button',{name:/🔊 Послушать/}),'phrase');
 
- await setState(page,{screen:'reading',readingRule:0,readingPhase:0});
+ await setState(page,{screen:'numbers'});
+ await expectAudioClick(page,page.getByRole('button',{name:/🔊 Послушать/}),'number');
+ const beforeRepeat=await page.evaluate(()=>window.__ottoPlayCount||0);
+ await page.getByRole('button',{name:/🔊 Послушать/}).click({force:true});
+ await page.waitForTimeout(250);
+ const afterRepeat=await page.evaluate(()=>window.__ottoPlayCount||0);
+ if(afterRepeat<=beforeRepeat)remember('Repeated number listening did not replay audio');
+
+ await setState(page,{screen:'reading',readingRule:3,readingPhase:0});
  await has(page,'sch → «ш»');
  await has(page,'Schule');
- await setState(page,{screen:'reading',readingRule:0,readingPhase:1}); await has(page,'Какое слово');
- await setState(page,{screen:'reading',readingRule:0,readingPhase:2}); await has(page,'Где здесь sch');
- await setState(page,{screen:'reading',readingRule:0,readingPhase:3}); await has(page,'Schrank');
- await setState(page,{screen:'reading',readingRule:0,readingPhase:4}); await has(page,'Напиши то, что услышал');
+ await setState(page,{screen:'reading',readingRule:3,readingPhase:1}); await has(page,'Какое слово');
+ await setState(page,{screen:'reading',readingRule:3,readingPhase:2}); await has(page,'Где здесь sch');
+ await setState(page,{screen:'reading',readingRule:3,readingPhase:3}); await has(page,'Schrank');
+ await setState(page,{screen:'reading',readingRule:3,readingPhase:4}); await has(page,'Напиши то, что услышал');
 
  await setState(page,{screen:'readingTest',readingTestStep:0}); await has(page,'Уже умеешь читать?');
- await setState(page,{screen:'readingPraise'}); await has(page,'ты уже читаешь первые слова');
- const otto=await page.locator('.bp-praise img').boundingBox();
- if(!otto||otto.y<0||otto.x<0||otto.x+otto.width>390+2)remember('Praise OTTO is cropped/offscreen at 390px');
+ await setState(page,{screen:'readingPraise',readingTestScore:5}); await has(page,'ты уже читаешь первые слова');
+ await imageCheck(page,'.bp-praise img','Praise OTTO');
+ await setState(page,{screen:'home'}); await imageCheck(page,'.bp-hero img','Home OTTO');
 
  await setState(page,{screen:'pronouns',pronounStep:0});
  for(const m of ['ich','du','er','sie','es','wir','ihr','Sie']) await has(page,m);
@@ -82,12 +122,13 @@ try{
  await setState(page,{screen:'verb',verbStep:6}); await has(page,'Ich'); await has(page,'wohne'); await has(page,'in Berlin');
 
  await setState(page,{screen:'home'});
- for(const width of [320,330,360,375,390,430,520]) await layoutCheck(page,width);
+ for(const width of [320,330,360,375,390,430,520]){await layoutCheck(page,width);await imageCheck(page,'.bp-hero img','Home OTTO '+width+'px')} 
  await setState(page,{screen:'settings'}); for(const width of [320,330,360,390,430,520]) await layoutCheck(page,width);
- await setState(page,{screen:'reading',readingRule:0,readingPhase:3}); for(const width of [320,330,360,390,430,520]) await layoutCheck(page,width);
+ await setState(page,{screen:'reading',readingRule:3,readingPhase:3}); for(const width of [320,330,360,390,430,520]) await layoutCheck(page,width);
 
  // Existing microphone pipeline: record -> stop -> own playback -> pronunciation endpoint.
  await page.setViewportSize({width:390,height:844});
+ await setState(page,{screen:'reading',readingRule:3,readingPhase:3});
  await page.getByRole('button',{name:/🎤 Прочитать/}).click({force:true});
  await page.waitForSelector('[data-record]',{timeout:7000});
  await page.click('[data-record]',{force:true});
@@ -101,6 +142,12 @@ try{
  if(pron)console.log('PRONUNCIATION',pron.status(),(await pron.text().catch(()=>'' )).slice(0,220));
  else remember('No pronunciation response');
  await page.locator('[data-close]').click({force:true});
+
+ await setState(page,{screen:'register',regStep:'welcome'});
+ await page.setViewportSize({width:390,height:844});
+ await imageCheck(page,'.bp-onboard-hero img','Onboarding OTTO');
+ const bodyText=(await page.locator('body').innerText()).toLocaleLowerCase('ru-RU');
+ if(bodyText.includes('preview:')||bodyText.includes('демонстрационная'))remember('Developer-facing preview text is visible to learner');
 
  if(failures.length)throw new Error(failures.join('\n'));
  console.log('OTTO Start revised preview UI/mobile/microphone smoke passed.');
