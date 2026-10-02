@@ -131,3 +131,15 @@ jobs:
           test "$status" = "200"
           case "$ctype" in audio/*) ;; *) echo "Preview TTS is not audio: $ctype"; exit 1;; esac
           test $(wc -c < /tmp/preview-audio.bin) -gt 1000
+
+      - name: Install Playwright for live preview smoke
+        if: always() && github.event_name == 'pull_request'
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+
+      - name: Run live preview sound and microphone smoke
+        if: always() && github.event_name == 'pull_request'
+        env:
+          BASE_URL: https://deploy-preview-${{ github.event.pull_request.number }}--otto-start.netlify.app
+        run: node tests/base-preview-live-smoke.mjs
