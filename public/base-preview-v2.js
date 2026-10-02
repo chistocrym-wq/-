@@ -219,6 +219,7 @@ function readingPraiseScreen(){
  const score=Math.round((Number(state.readingTestScore||0)/Math.max(1,READING_TEST.length))*100);
  app(screenHead('Готово','Первые правила чтения уже работают','BP.learn()')+'<div class="bp-card bp-praise"><img src="/otto/otto-guide.webp" alt="OTTO"><div><h2 class="bp-title">Отлично! Видишь — ты уже читаешь первые слова по-немецки 😊</h2><p class="bp-lead">А ведь совсем недавно это были просто незнакомые буквы. То ли ещё будет!</p><div class="bp-progress"><i style="width:'+score+'%"></i></div><small>Мини-проверка · '+score+'%</small><button class="bp-btn primary block" style="margin-top:12px" onclick="BP.pronouns()">Дальше: местоимения</button></div></div>','learn')
 }
+const P_TOTAL=13;
 function pronouns(){state.pronounStep=0;state.feedback='';go('pronouns')}
 function pronounScreen(){
  const s=state.pronounStep;
