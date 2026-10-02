@@ -166,7 +166,8 @@ export default async(req)=>{
       openaiCode:openaiResult.code||'',
       openaiStatus:openaiResult.status||0,
       geminiCode:geminiResult?.code||'',
-      geminiStatus:geminiResult?.status||0,\n      geminiDetail:geminiResult?.detail||'',
+      geminiStatus:geminiResult?.status||0,
+      geminiDetail:geminiResult?.detail||'',
     },
   },503);
 
