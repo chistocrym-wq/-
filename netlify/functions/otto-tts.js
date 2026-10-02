@@ -97,7 +97,7 @@ async function synthesizeGemini(apiKey, text, mode, kind) {
   try {
     const response=await fetch('https://generativelanguage.googleapis.com/v1beta/interactions',{
       method:'POST',
-      headers:{'x-goog-api-key':apiKey,'Content-Type':'application/json'},
+      headers:{'x-goog-api-key':apiKey,'Content-Type':'application/json','Api-Revision':'2026-05-20'},
       body:JSON.stringify({
         model:GEMINI_MODEL,
         input:geminiPrompt(text,mode,kind),
@@ -107,22 +107,12 @@ async function synthesizeGemini(apiKey, text, mode, kind) {
     });
     const raw=await response.text();
     if(!response.ok){
-      let code='',message='';
-      try{
-        const p=JSON.parse(raw);
-        code=String(p?.error?.status||p?.error?.code||'');
-        message=String(p?.error?.message||p?.message||'').slice(0,220);
-      }catch{
-        message=String(raw||'').replaceAll(String(apiKey||''),'[redacted]').slice(0,220);
-      }
+      let code='',message='';try{const p=JSON.parse(raw);code=String(p?.error?.status||p?.error?.code||'');message=String(p?.error?.message||'').slice(0,180)}catch{}
       console.error('otto-tts Gemini error',response.status,code,message);
-      return {ok:false,status:response.status,code:code||'gemini_tts_error',detail:message};
+      return {ok:false,status:response.status,code:code||'gemini_tts_error'};
     }
     let payload;try{payload=JSON.parse(raw)}catch{return {ok:false,status:502,code:'gemini_invalid_json'}}
-    const stepAudio=Array.isArray(payload?.steps)
-      ? payload.steps.flatMap((step)=>Array.isArray(step?.content)?step.content:[]).filter((part)=>part?.type==='audio'&&part?.data).at(-1)
-      : null;
-    const audioBlock=payload?.output_audio||payload?.outputAudio||payload?.interaction?.output_audio||payload?.interaction?.outputAudio||stepAudio;
+    const audioBlock=payload?.output_audio||payload?.outputAudio||payload?.interaction?.output_audio||payload?.interaction?.outputAudio;
     const encoded=String(audioBlock?.data||'');
     if(!encoded)return {ok:false,status:502,code:'gemini_missing_audio'};
     const decoded=Buffer.from(encoded,'base64');
@@ -161,25 +151,9 @@ export default async(req)=>{
     if(cached){const audio=Buffer.from(cached);if(isWav(audio))return new Response(audio,{headers:{'Content-Type':'audio/wav','Cache-Control':'public, max-age=31536000, immutable','X-Otto-TTS':'cache','X-Otto-Pronunciation':PRONUNCIATION_VERSION,'X-Otto-Voice':'male'}})}
   }catch(error){console.warn('otto-tts cache read failed',error?.message||error)}
 
-  const openaiResult=await synthesizeOpenAI(Netlify.env.get('OPENAI_API_KEY'),text,mode,kind);
-  let result=openaiResult;
-  let geminiResult=null;
-  if(!result.ok){
-    geminiResult=await synthesizeGemini(Netlify.env.get('GEMINI_API_KEY'),text,mode,kind);
-    result=geminiResult;
-  }
-  if(!result.ok)return json({
-    error:'High-quality German male voice is not configured on the server.',
-    providerCode:result.code||'tts_failed',
-    providerStatus:result.status||503,
-    debugPreview:{
-      openaiCode:openaiResult.code||'',
-      openaiStatus:openaiResult.status||0,
-      geminiCode:geminiResult?.code||'',
-      geminiStatus:geminiResult?.status||0,
-      geminiDetail:geminiResult?.detail||'',
-    },
-  },503);
+  let result=await synthesizeOpenAI(Netlify.env.get('OPENAI_API_KEY'),text,mode,kind);
+  if(!result.ok)result=await synthesizeGemini(Netlify.env.get('GEMINI_API_KEY'),text,mode,kind);
+  if(!result.ok)return json({error:'High-quality German male voice is not configured on the server.',providerCode:result.code||'tts_failed',providerStatus:result.status||503},503);
 
   try{await store.set(key,result.audio)}catch(error){console.warn('otto-tts cache write failed',error?.message||error)}
   return new Response(result.audio,{headers:{'Content-Type':'audio/wav','Cache-Control':'public, max-age=31536000, immutable','X-Otto-TTS':'generated','X-Otto-Provider':result.provider,'X-Otto-Pronunciation':PRONUNCIATION_VERSION,'X-Otto-Voice':'male'}});
