@@ -9,6 +9,7 @@ const STORE = 'otto-tts-cache-de-v8-male';
 const PRONUNCIATION_VERSION = 'de-DE-hochdeutsch-male-v8';
 const MAX_TEXT_LENGTH = 420;
 const SAMPLE_RATE = 24000;
+const PREVIEW_DIAGNOSTIC_VERSION = 'preview-tts-v5';
 
 function json(data, status = 200, headers = {}) {
   return new Response(JSON.stringify(data), {
@@ -159,13 +160,14 @@ export default async(req)=>{
     providerCode:result?.code||'tts_failed',
     providerStatus:result?.status||503,
     debugPreview:{
+      version:PREVIEW_DIAGNOSTIC_VERSION,
       openai:{code:openaiResult?.code||'',status:openaiResult?.status||0},
       gemini:{code:geminiResult?.code||'',status:geminiResult?.status||0},
     },
   },503);
 
   try{await store.set(key,result.audio)}catch(error){console.warn('otto-tts cache write failed',error?.message||error)}
-  return new Response(result.audio,{headers:{'Content-Type':'audio/wav','Cache-Control':'public, max-age=31536000, immutable','X-Otto-TTS':'generated','X-Otto-Provider':result.provider,'X-Otto-Pronunciation':PRONUNCIATION_VERSION,'X-Otto-Voice':'male'}});
+  return new Response(result.audio,{headers:{'Content-Type':'audio/wav','Cache-Control':'public, max-age=31536000, immutable','X-Otto-TTS':'generated','X-Otto-Provider':result.provider,'X-Otto-Pronunciation':PRONUNCIATION_VERSION,'X-Otto-Voice':'male','X-Otto-Preview-TTS':PREVIEW_DIAGNOSTIC_VERSION}});
 };
 
 export const config={path:'/api/otto-tts',rateLimit:{windowLimit:60,windowSize:60,aggregateBy:['ip','domain']}};
