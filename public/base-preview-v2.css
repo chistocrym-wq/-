@@ -174,3 +174,8 @@ body{overflow-x:hidden}
   .bp-word{font-size:27px}
   .bp-letter{font-size:52px}
 }
+
+.bp-lesson-nav{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;justify-content:flex-start}
+.bp-lesson-nav button{border:0;background:transparent;color:var(--bp-muted);padding:7px 8px;border-radius:10px;font-size:11px;font-weight:800;text-decoration:underline;text-underline-offset:3px}
+.bp-lesson-nav button:hover,.bp-lesson-nav button:focus-visible{background:#edf5f3;color:var(--bp-teal-dark)}
+@media(max-width:620px){.bp-lesson-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.bp-lesson-nav button{text-align:left;white-space:normal}}
