@@ -1,4 +1,5 @@
 import { chromium } from 'playwright';
+import fs from 'node:fs';
 
 const base=String(process.env.BASE_URL||'').replace(/\/+$/,'');
 if(!base) throw new Error('BASE_URL is required');
@@ -6,6 +7,7 @@ const url=base+'/base-preview';
 const failures=[];
 const remember=m=>{failures.push(m);console.error('SMOKE:',m)};
 let browser;
+fs.mkdirSync('test-artifacts',{recursive:true});
 
 async function setState(page,patch){
   await page.evaluate(v=>window.__OTTO_BASE_PREVIEW_SET_STATE(v),patch);
@@ -57,6 +59,33 @@ async function layoutCheck(page,width){
   if(r.bad.length)remember('Elements outside viewport at '+width+'px: '+JSON.stringify(r.bad));
 }
 
+
+async function mobileMetric(page,width,screen,selector){
+  await page.setViewportSize({width,height: width===320?568:width===330?700:width===360?800:width===375?812:844});
+  await page.waitForTimeout(120);
+  const metric=await page.evaluate(({selector,screen})=>{
+    const img=document.querySelector(selector);
+    const nav=document.querySelector('.bp-bottom');
+    const lesson=[...document.querySelectorAll('.bp-lesson-nav button')].map(b=>({text:(b.textContent||'').trim(),r:b.getBoundingClientRect()}));
+    const r=img?.getBoundingClientRect();
+    const nr=nav?.getBoundingClientRect();
+    const vv={w:window.innerWidth,h:window.innerHeight,scrollW:document.documentElement.scrollWidth};
+    return {
+      screen,viewport:vv,
+      otto:r?{w:Math.round(r.width),h:Math.round(r.height),x:Math.round(r.x),y:Math.round(r.y),bottom:Math.round(r.bottom)}:null,
+      bottomNav:nr?{x:Math.round(nr.x),w:Math.round(nr.width),bottom:Math.round(nr.bottom),visible:nr.left>=-1&&nr.right<=window.innerWidth+1}:null,
+      lessonNav:lesson.map(x=>({text:x.text,x:Math.round(x.r.x),w:Math.round(x.r.width),bottom:Math.round(x.r.bottom),visible:x.r.left>=-1&&x.r.right<=window.innerWidth+1}))
+    };
+  },{selector,screen});
+  console.log('MOBILE_METRIC '+width+' '+screen+' '+JSON.stringify(metric));
+  await page.screenshot({path:`test-artifacts/${width}-${screen}.png`,fullPage:true});
+  if(metric.viewport.scrollW>metric.viewport.w+2)remember(`Horizontal overflow on ${screen} at ${width}px`);
+  if(metric.otto && (metric.otto.x<0 || metric.otto.x+metric.otto.w>metric.viewport.w+1))remember(`OTTO outside viewport on ${screen} at ${width}px`);
+  if(metric.bottomNav && !metric.bottomNav.visible)remember(`Bottom nav clipped on ${screen} at ${width}px`);
+  for(const x of metric.lessonNav) if(!x.visible)remember(`Lesson nav clipped: ${x.text} on ${screen} at ${width}px`);
+  return metric;
+}
+
 try{
  browser=await chromium.launch({headless:true,args:['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream','--autoplay-policy=no-user-gesture-required']});
  const context=await browser.newContext({viewport:{width:390,height:844},permissions:['microphone']});
@@ -68,9 +97,43 @@ try{
    const original=HTMLMediaElement.prototype.play;
    HTMLMediaElement.prototype.play=function(){window.__ottoPlayCount=(window.__ottoPlayCount||0)+1;return original.apply(this,arguments)};
  });
+
+ // Mobile-first walkthrough at 390x844 using real clicks.
+ await page.setViewportSize({width:390,height:844});
  await page.goto(url,{waitUntil:'domcontentloaded',timeout:30000});
  await page.evaluate(()=>localStorage.clear());
  await page.reload({waitUntil:'domcontentloaded'});
+ await mobileMetric(page,390,'onboarding','.bp-onboard-hero img');
+ await page.getByRole('button',{name:/Telegram/}).click();
+ await has(page,'Давайте определим ваш уровень');
+ await page.getByRole('button',{name:/Начинаю с нуля/}).click();
+ await mobileMetric(page,390,'home','.bp-hero img');
+ await page.getByRole('button',{name:/Продолжить занятие/}).click();
+ await has(page,'Сначала увидим порядок');
+ await page.getByRole('button',{name:/Начать с A/}).click();
+ await has(page,'Anna');
+ await has(page,'← Назад');
+ await has(page,'Пропустить задание');
+ await has(page,'Вернуться к темам');
+ await mobileMetric(page,390,'lesson','.bp-brand img');
+ await page.getByRole('button',{name:/← Назад/}).click();
+ await page.getByRole('button',{name:/Начать с A/}).click();
+ await page.getByRole('button',{name:/Пропустить задание/}).click();
+ await page.getByRole('button',{name:/Вернуться к темам/}).click();
+ await page.getByRole('button',{name:/Настройки/}).last().click();
+ await has(page,'Мой прогресс');
+
+ // Required compact OTTO snapshots at 390 / 360 / 320.
+ for(const width of [390,360,320]){
+   await setState(page,{screen:'register',regStep:'welcome'});
+   await mobileMetric(page,width,'onboarding','.bp-onboard-hero img');
+   await setState(page,{screen:'home'});
+   await mobileMetric(page,width,'home','.bp-hero img');
+   await setState(page,{screen:'readingPraise',readingTestScore:5});
+   await mobileMetric(page,width,'praise','.bp-praise img');
+   await setState(page,{screen:'alphabet',alphaStep:1});
+   await mobileMetric(page,width,'lesson','.bp-brand img');
+ }
 
  await page.getByRole('button',{name:/Telegram/}).click();
  await page.getByRole('button',{name:/Начинаю с нуля/}).click();
