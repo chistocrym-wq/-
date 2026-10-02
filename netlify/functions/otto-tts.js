@@ -82,7 +82,7 @@ async function synthesizeOpenAI(apiKey, text, mode, kind) {
       let code='';
       try{const p=JSON.parse(detail);code=String(p?.error?.code||p?.error?.type||'')}catch{}
       console.error('otto-tts OpenAI error',response.status,code);
-      return {ok:false,status:response.status,code:code||'openai_tts_error'};
+      return {ok:false,status:response.status,code:code||'openai_tts_error',message:detail.slice(0,240)};
     }
     const bytes=Buffer.from(await response.arrayBuffer());
     if(!isWav(bytes)) return {ok:false,status:502,code:'openai_invalid_audio'};
@@ -110,7 +110,7 @@ async function synthesizeGemini(apiKey, text, mode, kind) {
     if(!response.ok){
       let code='',message='';try{const p=JSON.parse(raw);code=String(p?.error?.status||p?.error?.code||'');message=String(p?.error?.message||'').slice(0,180)}catch{}
       console.error('otto-tts Gemini error',response.status,code,message);
-      return {ok:false,status:response.status,code:code||'gemini_tts_error'};
+      return {ok:false,status:response.status,code:code||'gemini_tts_error',message};
     }
     let payload;try{payload=JSON.parse(raw)}catch{return {ok:false,status:502,code:'gemini_invalid_json'}}
     const audioBlock=payload?.output_audio||payload?.outputAudio||payload?.interaction?.output_audio||payload?.interaction?.outputAudio;
@@ -161,8 +161,8 @@ export default async(req)=>{
     providerStatus:result?.status||503,
     debugPreview:{
       version:PREVIEW_DIAGNOSTIC_VERSION,
-      openai:{code:openaiResult?.code||'',status:openaiResult?.status||0},
-      gemini:{code:geminiResult?.code||'',status:geminiResult?.status||0},
+      openai:{code:openaiResult?.code||'',status:openaiResult?.status||0,message:openaiResult?.message||''},
+      gemini:{code:geminiResult?.code||'',status:geminiResult?.status||0,message:geminiResult?.message||''},
     },
   },503);
 
