@@ -176,10 +176,10 @@ button,input,textarea,select{max-width:100%}
 .bp-reading-examples{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .bp-chip{border:1px solid var(--bp-line);background:#fff;border-radius:13px;padding:10px 12px;color:var(--bp-ink);font-weight:800}
 .bp-lesson-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:12px;margin-bottom:10px;position:relative;z-index:20}
-.bp-lesson-nav button{border:1px solid var(--bp-line);background:#fff;color:var(--bp-muted);padding:8px 7px;border-radius:10px;font-size:11px;font-weight:800;min-height:38px;text-align:center;white-space:normal}
+.bp-lesson-nav button{border:1px solid var(--bp-line);background:#fff;color:var(--bp-muted);padding:7px 7px;border-radius:10px;font-size:11px;font-weight:800;min-height:36px;text-align:center;white-space:normal}
 .bp-lesson-nav button:nth-child(3){grid-column:1/-1}
 .bp-btn,.bp-option,.bp-back,.bp-icon,.bp-bottom button,.bp-lesson-nav button{position:relative;z-index:2}
-body > [data-netlify-deploy-id]{pointer-events:none}
+body > [data-netlify-deploy-id]{display:none!important}
 
 @media(min-width:860px){
   .bp-home-layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(300px,.65fr);gap:16px;align-items:start}
@@ -221,9 +221,13 @@ body > [data-netlify-deploy-id]{pointer-events:none}
   .bp-hero img{width:72px;height:72px;max-width:72px;max-height:72px}
   .bp-praise{grid-template-columns:104px minmax(0,1fr)}
   .bp-praise img{width:100px;height:100px;max-width:100px;max-height:100px}
-  .bp-card,.bp-level{padding:14px;border-radius:18px}
-  .bp-letter{font-size:52px}
-  .bp-word{font-size:27px}
+  .bp-card,.bp-level{padding:12px;border-radius:18px}
+  .bp-letter{font-size:46px}
+  .bp-word{font-size:25px}
+  .bp-audio{margin:9px 0}
+  .bp-btn{min-height:42px}
+  .bp-option{min-height:43px;padding:11px 12px}
+  .bp-lesson-nav{gap:4px;margin-top:8px;margin-bottom:6px}
   .bp-progress-grid{grid-template-columns:1fr}
   .bp-alphabet-map{grid-template-columns:repeat(5,minmax(0,1fr))}
   .bp-bottom{padding-left:max(4px,env(safe-area-inset-left));padding-right:max(4px,env(safe-area-inset-right))}
