@@ -16,7 +16,14 @@ async function setState(page, patch) {
 }
 async function text(page, marker) {
   const body = await page.locator('body').innerText();
-  if (!body.includes(marker)) remember('Missing UI marker: ' + marker);
+  if (!body.includes(marker)) {
+    const state = await page.evaluate(() => {
+      try { return JSON.parse(localStorage.getItem('ottoStartBasePreviewV3') || '{}'); } catch { return {}; }
+    });
+    console.error('STATE DEBUG', JSON.stringify(state));
+    console.error('BODY DEBUG', body.slice(0, 1400).replace(/\n/g,' | '));
+    remember('Missing UI marker: ' + marker);
+  }
 }
 
 try {
