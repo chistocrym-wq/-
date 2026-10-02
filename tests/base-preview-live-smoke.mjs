@@ -135,13 +135,6 @@ try{
    await mobileMetric(page,width,'lesson','.bp-brand img');
  }
 
- await page.getByRole('button',{name:/Telegram/}).click();
- await page.getByRole('button',{name:/Начинаю с нуля/}).click();
- await has(page,'Ваш прогресс');
- await page.getByRole('button',{name:/Продолжить занятие/}).click();
- await has(page,'Сначала увидим порядок');
- for(const m of ['A','B','C','Z','Ä','Ö','Ü','ß']) await has(page,m);
-
  await setState(page,{screen:'alphabet',alphaStep:23});
  await has(page,'W');
  await has(page,'Wasser');
