@@ -97,7 +97,7 @@ async function synthesizeGemini(apiKey, text, mode, kind) {
   try {
     const response=await fetch('https://generativelanguage.googleapis.com/v1beta/interactions',{
       method:'POST',
-      headers:{'x-goog-api-key':apiKey,'Content-Type':'application/json','Api-Revision':'2026-05-20'},
+      headers:{'x-goog-api-key':apiKey,'Content-Type':'application/json'},
       body:JSON.stringify({
         model:GEMINI_MODEL,
         input:geminiPrompt(text,mode,kind),
