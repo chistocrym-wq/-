@@ -105,7 +105,7 @@ jobs:
           echo "Preview: $PREVIEW"
           for i in $(seq 1 30); do
             code=$(curl -sS -o /tmp/page.html -w '%{http_code}' --max-time 15 "$PREVIEW/base-preview?v=${GITHUB_SHA}" || true)
-            if [ "$code" = "200" ] && grep -q "base-preview-v2.js?v=3" /tmp/page.html; then break; fi
+            if [ "$code" = "200" ] && grep -q "base-preview-v2.js?v=4" /tmp/page.html; then break; fi
             echo "Waiting for preview page: HTTP $code ($i/30)"
             sleep 4
           done
