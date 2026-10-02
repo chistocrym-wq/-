@@ -163,6 +163,8 @@ function examScreen(){app(screenHead('Проверим, что ты уже ум�
 
 function render(){if(state.screen==='register')return register();if(state.screen==='level')return level();if(state.screen==='diagnostic')return diagnostic();if(state.screen==='home')return home();if(state.screen==='learn')return learn();if(state.screen==='alphabet')return renderAlpha();if(state.screen==='nextSession')return nextSessionScreen();if(state.screen==='pronouns')return pronounScreen();if(state.screen==='verb')return verbScreen();if(state.screen==='noun')return nounScreen();if(state.screen==='numbers')return numberScreen();if(state.screen==='sentence')return sentenceScreen();if(state.screen==='errors')return errorsScreen();if(state.screen==='settings')return settingsScreen();if(state.screen==='exam')return examScreen();home()}
 
+window.__OTTO_BASE_PREVIEW_SET_STATE=(patch)=>{Object.assign(state,patch||{});save();render();return clone(state)};
+
 window.BP={
   play,
   answerChoice(ok,b){b.classList.add(ok?'correct':'wrong');},
