@@ -292,3 +292,155 @@ body > [data-netlify-deploy-id]{pointer-events:none!important}
  .bp-title{font-size:21px}
  .bp-bottom{padding-left:max(4px,env(safe-area-inset-left));padding-right:max(4px,env(safe-area-inset-right))}
 }
+
+
+/* v9 revised mobile and OTTO image safety */
+*{min-width:0}
+img{max-width:100%;height:auto}
+button,input,textarea,select{max-width:100%}
+.bp-word,.bp-title,.bp-lead,.bp-card,.bp-path-item,.bp-mini,.bp-settings-row{overflow-wrap:anywhere;word-break:normal}
+.bp-onboard-card{overflow:hidden}
+.bp-onboard-hero{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(120px,190px);
+  gap:14px;
+  align-items:end;
+  min-height:190px;
+  overflow:visible;
+}
+.bp-onboard-hero .copy{max-width:none}
+.bp-onboard-hero img{
+  position:static;
+  inset:auto;
+  width:100%;
+  max-width:190px;
+  max-height:190px;
+  object-fit:contain;
+  object-position:center bottom;
+  justify-self:end;
+  align-self:end;
+  transform:none;
+}
+.bp-hero{overflow:visible;align-items:center}
+.bp-hero img{
+  width:100%;
+  max-width:168px;
+  max-height:190px;
+  object-fit:contain;
+  object-position:center;
+}
+.bp-praise{
+  display:grid;
+  grid-template-columns:minmax(120px,190px) minmax(0,1fr);
+  gap:16px;
+  align-items:center;
+  overflow:visible;
+}
+.bp-praise img{
+  width:100%;
+  max-width:190px;
+  max-height:220px;
+  object-fit:contain;
+  object-position:center;
+  justify-self:center;
+}
+.bp-modal{max-height:90dvh;overflow:auto}
+.bp-progress-mini{display:flex;gap:8px;flex-wrap:wrap;color:var(--bp-muted);font-size:11px}
+.bp-progress-mini span{background:#f7faf9;border:1px solid var(--bp-line);border-radius:999px;padding:6px 9px}
+.bp-progress-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}
+.bp-progress-grid>div{background:#f8fbfa;border:1px solid var(--bp-line);border-radius:14px;padding:10px}
+.bp-progress-grid b,.bp-progress-grid small{display:block}
+.bp-progress-grid small{margin-top:3px;color:var(--bp-muted);font-size:11px;line-height:1.35}
+.bp-progress-value{font-size:16px;font-weight:900;margin-top:6px}
+.bp-alphabet-map{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:6px;margin:14px 0}
+.bp-alphabet-map span{display:grid;place-items:center;min-height:34px;border:1px solid var(--bp-line);border-radius:10px;background:#f8fbfa;font-weight:900}
+.bp-reading-examples{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.bp-chip{border:1px solid var(--bp-line);background:#fff;border-radius:13px;padding:10px 12px;color:var(--bp-ink);font-weight:800}
+.bp-lesson-nav{align-items:center}
+.bp-lesson-nav button{flex:0 1 auto}
+.bp-input,.bp-textarea{min-width:0;width:100%}
+
+@media(max-width:520px){
+  .bp-app{padding-left:12px;padding-right:12px}
+  .bp-onboard{margin-top:6px}
+  .bp-onboard-body{padding:18px}
+  .bp-onboard-hero{grid-template-columns:minmax(0,1fr) 128px;min-height:160px;padding:18px}
+  .bp-onboard-hero img{max-width:128px;max-height:150px}
+  .bp-hero{grid-template-columns:minmax(0,1fr) 108px;padding:16px}
+  .bp-hero img{max-width:108px;max-height:130px}
+  .bp-praise{grid-template-columns:110px minmax(0,1fr);gap:12px}
+  .bp-praise img{max-width:110px;max-height:150px}
+  .bp-grid2,.bp-grid3,.bp-exam-grid{grid-template-columns:1fr}
+  .bp-next{grid-template-columns:44px minmax(0,1fr)}
+  .bp-next>.bp-btn{grid-column:1/-1}
+  .bp-progress-grid{grid-template-columns:1fr 1fr}
+  .bp-alphabet-map{grid-template-columns:repeat(6,minmax(0,1fr))}
+  .bp-modal-backdrop{padding:10px}
+  .bp-modal{width:100%;border-radius:20px;padding:16px}
+  .bp-lesson-nav{display:grid;grid-template-columns:1fr 1fr;width:100%}
+  .bp-lesson-nav button{text-align:left;white-space:normal}
+}
+@media(max-width:430px){
+  .bp-title,.bp-hero h1{font-size:24px}
+  .bp-onboard-hero{grid-template-columns:minmax(0,1fr) 105px}
+  .bp-onboard-hero img{max-width:105px}
+  .bp-hero{grid-template-columns:minmax(0,1fr) 88px}
+  .bp-hero img{max-width:88px}
+  .bp-praise{grid-template-columns:1fr;text-align:left}
+  .bp-praise img{max-width:140px;justify-self:center}
+  .bp-pronoun-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .bp-structure{grid-template-columns:1fr}
+  .bp-audio,.bp-row{display:grid;grid-template-columns:1fr}
+  .bp-audio .bp-btn,.bp-row>.bp-btn{width:100%}
+  .bp-alphabet-map{grid-template-columns:repeat(5,minmax(0,1fr))}
+}
+@media(max-width:390px){
+  .bp-app{padding-left:10px;padding-right:10px}
+  .bp-top{gap:8px}
+  .bp-brand img{width:42px;height:42px}
+  .bp-brand small{font-size:10px}
+  .bp-onboard-hero{padding:15px;grid-template-columns:minmax(0,1fr) 92px}
+  .bp-onboard-hero img{max-width:92px;max-height:125px}
+  .bp-card{padding:14px;border-radius:18px}
+  .bp-level{padding:14px}
+  .bp-letter{font-size:54px}
+  .bp-word{font-size:28px}
+  .bp-progress-grid{grid-template-columns:1fr}
+  .bp-bottom{padding-left:4px;padding-right:4px}
+  .bp-bottom button{font-size:9.5px;padding-left:1px;padding-right:1px}
+}
+@media(max-width:360px){
+  .bp-title,.bp-hero h1{font-size:22px}
+  .bp-onboard-hero{grid-template-columns:minmax(0,1fr) 78px;gap:8px}
+  .bp-onboard-hero img{max-width:78px;max-height:110px}
+  .bp-hero{grid-template-columns:minmax(0,1fr) 72px;gap:8px}
+  .bp-hero img{max-width:72px}
+  .bp-alphabet-map{grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
+  .bp-alphabet-map span{min-height:31px;font-size:13px}
+  .bp-lesson-nav{grid-template-columns:1fr}
+  .bp-otp{gap:4px}
+  .bp-otp input{font-size:17px;padding:10px 2px}
+}
+@media(max-width:330px){
+  .bp-app{padding-left:8px;padding-right:8px}
+  .bp-onboard-body{padding:14px}
+  .bp-onboard-hero{grid-template-columns:1fr}
+  .bp-onboard-hero .copy{max-width:100%}
+  .bp-onboard-hero img{max-width:105px;max-height:105px;justify-self:center}
+  .bp-hero{grid-template-columns:1fr}
+  .bp-hero img{max-width:92px;justify-self:center}
+  .bp-bottom button span{font-size:18px}
+  .bp-bottom button{font-size:9px}
+  .bp-screen-head{gap:7px}
+  .bp-back{width:38px;height:38px}
+  .bp-alphabet-map{grid-template-columns:repeat(5,minmax(0,1fr))}
+}
+@media(max-width:320px){
+  .bp-app{padding-left:7px;padding-right:7px}
+  .bp-card{padding:12px}
+  .bp-btn{padding:11px 10px}
+  .bp-title{font-size:21px}
+  .bp-word{font-size:25px}
+  .bp-letter{font-size:50px}
+  .bp-bottom button{font-size:8.5px}
+}
