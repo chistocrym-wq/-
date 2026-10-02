@@ -107,12 +107,22 @@ async function synthesizeGemini(apiKey, text, mode, kind) {
     });
     const raw=await response.text();
     if(!response.ok){
-      let code='',message='';try{const p=JSON.parse(raw);code=String(p?.error?.status||p?.error?.code||'');message=String(p?.error?.message||'').slice(0,180)}catch{}
+      let code='',message='';
+      try{
+        const p=JSON.parse(raw);
+        code=String(p?.error?.status||p?.error?.code||'');
+        message=String(p?.error?.message||p?.message||'').slice(0,220);
+      }catch{
+        message=String(raw||'').replaceAll(String(apiKey||''),'[redacted]').slice(0,220);
+      }
       console.error('otto-tts Gemini error',response.status,code,message);
       return {ok:false,status:response.status,code:code||'gemini_tts_error',detail:message};
     }
     let payload;try{payload=JSON.parse(raw)}catch{return {ok:false,status:502,code:'gemini_invalid_json'}}
-    const audioBlock=payload?.output_audio||payload?.outputAudio||payload?.interaction?.output_audio||payload?.interaction?.outputAudio;
+    const stepAudio=Array.isArray(payload?.steps)
+      ? payload.steps.flatMap((step)=>Array.isArray(step?.content)?step.content:[]).filter((part)=>part?.type==='audio'&&part?.data).at(-1)
+      : null;
+    const audioBlock=payload?.output_audio||payload?.outputAudio||payload?.interaction?.output_audio||payload?.interaction?.outputAudio||stepAudio;
     const encoded=String(audioBlock?.data||'');
     if(!encoded)return {ok:false,status:502,code:'gemini_missing_audio'};
     const decoded=Buffer.from(encoded,'base64');
