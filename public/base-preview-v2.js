@@ -165,6 +165,7 @@ function render(){if(state.screen==='register')return register();if(state.screen
 
 window.BP={
   play,
+  answerChoice(ok,b){b.classList.add(ok?'correct':'wrong');},
   nav(id){if(id==='home')go('home');if(id==='learn')go('learn');if(id==='errors')go('errors');if(id==='settings')go('settings')},
   home(){go('home')},learn(){go('learn')},errors(){go('errors')},settings(){go('settings')},level(){go('level')},
   regEmail(){state.regStep='email';go('register')},regTelegram(){state.regStep='done';go('level')},regWelcome(){state.regStep='welcome';go('register')},
