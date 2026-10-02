@@ -110,7 +110,7 @@ async function synthesizeGemini(apiKey, text, mode, kind) {
     if(!response.ok){
       let code='',message='';try{const p=JSON.parse(raw);code=String(p?.error?.status||p?.error?.code||'');message=String(p?.error?.message||'').slice(0,180)}catch{}
       console.error('otto-tts Gemini error',response.status,code,message);
-      return {ok:false,status:response.status,code:code||'gemini_tts_error',message};
+      return {ok:false,status:response.status,code:code||'gemini_tts_error',message:message||raw.slice(0,400)};
     }
     let payload;try{payload=JSON.parse(raw)}catch{return {ok:false,status:502,code:'gemini_invalid_json'}}
     const audioBlock=payload?.output_audio||payload?.outputAudio||payload?.interaction?.output_audio||payload?.interaction?.outputAudio;
