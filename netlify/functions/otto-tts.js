@@ -151,9 +151,24 @@ export default async(req)=>{
     if(cached){const audio=Buffer.from(cached);if(isWav(audio))return new Response(audio,{headers:{'Content-Type':'audio/wav','Cache-Control':'public, max-age=31536000, immutable','X-Otto-TTS':'cache','X-Otto-Pronunciation':PRONUNCIATION_VERSION,'X-Otto-Voice':'male'}})}
   }catch(error){console.warn('otto-tts cache read failed',error?.message||error)}
 
-  let result=await synthesizeOpenAI(Netlify.env.get('OPENAI_API_KEY'),text,mode,kind);
-  if(!result.ok)result=await synthesizeGemini(Netlify.env.get('GEMINI_API_KEY'),text,mode,kind);
-  if(!result.ok)return json({error:'High-quality German male voice is not configured on the server.',providerCode:result.code||'tts_failed',providerStatus:result.status||503},503);
+  const openaiResult=await synthesizeOpenAI(Netlify.env.get('OPENAI_API_KEY'),text,mode,kind);
+  let result=openaiResult;
+  let geminiResult=null;
+  if(!result.ok){
+    geminiResult=await synthesizeGemini(Netlify.env.get('GEMINI_API_KEY'),text,mode,kind);
+    result=geminiResult;
+  }
+  if(!result.ok)return json({
+    error:'High-quality German male voice is not configured on the server.',
+    providerCode:result.code||'tts_failed',
+    providerStatus:result.status||503,
+    debugPreview:{
+      openaiCode:openaiResult.code||'',
+      openaiStatus:openaiResult.status||0,
+      geminiCode:geminiResult?.code||'',
+      geminiStatus:geminiResult?.status||0,
+    },
+  },503);
 
   try{await store.set(key,result.audio)}catch(error){console.warn('otto-tts cache write failed',error?.message||error)}
   return new Response(result.audio,{headers:{'Content-Type':'audio/wav','Cache-Control':'public, max-age=31536000, immutable','X-Otto-TTS':'generated','X-Otto-Provider':result.provider,'X-Otto-Pronunciation':PRONUNCIATION_VERSION,'X-Otto-Voice':'male'}});
