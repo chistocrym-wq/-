@@ -16,7 +16,7 @@ async function setState(page, patch) {
 }
 async function text(page, marker) {
   const body = await page.locator('body').innerText();
-  if (!body.includes(marker)) {
+  if (!body.toLocaleLowerCase('ru-RU').includes(String(marker).toLocaleLowerCase('ru-RU'))) {
     const state = await page.evaluate(() => {
       try { return JSON.parse(localStorage.getItem('ottoStartBasePreviewV3') || '{}'); } catch { return {}; }
     });
