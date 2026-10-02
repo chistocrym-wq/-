@@ -36,11 +36,11 @@ async function imageCheck(page,selector,label){
   const r=await page.locator(selector).evaluate(el=>{
     const b=el.getBoundingClientRect(),p=el.parentElement?.getBoundingClientRect();
     const cs=getComputedStyle(el);
-    return {b:{x:b.x,y:b.y,width:b.width,height:b.height,right:b.right,bottom:b.bottom},p:p?{x:p.x,y:p.y,width:p.width,height:p.height,right:p.right,bottom:p.bottom}:null,fit:cs.objectFit};
+    return {vw:window.innerWidth,b:{x:b.x,y:b.y,width:b.width,height:b.height,right:b.right,bottom:b.bottom},p:p?{x:p.x,y:p.y,width:p.width,height:p.height,right:p.right,bottom:p.bottom}:null,fit:cs.objectFit};
   }).catch(()=>null);
   if(!r)return remember(label+' image missing');
   if(r.fit!=='contain')remember(label+' must use object-fit: contain');
-  if(r.b.x< -2||r.b.right>innerWidth+2||r.b.y< -2)remember(label+' image is outside viewport: '+JSON.stringify(r));
+  if(r.b.x< -2||r.b.right>r.vw+2||r.b.y< -2)remember(label+' image is outside viewport: '+JSON.stringify(r));
 }
 async function layoutCheck(page,width){
   await page.setViewportSize({width,height:844});
