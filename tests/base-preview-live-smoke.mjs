@@ -9,9 +9,10 @@ let browser;
 function remember(message) { failures.push(message); console.error('SMOKE:', message); }
 async function setState(page, patch) {
   await page.evaluate((value) => {
-    localStorage.setItem('ottoStartBasePreviewV3', JSON.stringify(value));
+    if (typeof window.__OTTO_BASE_PREVIEW_SET_STATE !== 'function') throw new Error('Preview state hook missing');
+    window.__OTTO_BASE_PREVIEW_SET_STATE(value);
   }, patch);
-  await page.reload({ waitUntil:'domcontentloaded' });
+  await page.waitForTimeout(80);
 }
 async function text(page, marker) {
   const body = await page.locator('body').innerText();
