@@ -327,7 +327,7 @@ window.BP={
   verifyCode(){const v=[...document.querySelectorAll('[data-otp]')].map(x=>x.value).join('');if(v.length!==6){toast('Введите 6 цифр. В Preview подходит любой код.');return}state.regStep='done';go('level')},
   startZero(){state.level='zero';state.alphaStep=0;go('home')},
   startDiagnostic(){state.level='base';state.diagIndex=0;state.diagScore=0;go('diagnostic')},
-  soonA1(){root.insertAdjacentHTML('beforeend','<div class="bp-modal-backdrop" id="soonModal"><div class="bp-modal"><span class="bp-badge">Скоро</span><h3 style="margin-top:12px">Подготовка к A1</h3><p class="bp-lead">Этот второй большой этап будем делать позже. Сейчас Preview проверяет только «Базовый немецкий».</p><button class="bp-btn primary block" style="margin-top:14px" onclick="document.getElementById(\\'soonModal\\').remove()">Понятно</button></div></div>')},
+  soonA1(){root.insertAdjacentHTML('beforeend','<div class="bp-modal-backdrop" id="soonModal"><div class="bp-modal"><span class="bp-badge">Скоро</span><h3 style="margin-top:12px">Подготовка к A1</h3><p class="bp-lead">Этот второй большой этап будем делать позже. Сейчас Preview проверяет только «Базовый немецкий».</p><button class="bp-btn primary block" style="margin-top:14px" onclick="this.closest(&quot;.bp-modal-backdrop&quot;).remove()">Понятно</button></div></div>')},
   diagAnswer(idx,b){const item=DIAG[state.diagIndex],ok=idx===item.ok;b.classList.add(ok?'correct':'wrong');if(ok)state.diagScore++;setTimeout(()=>{state.diagIndex++;save();render()},420)},
   diagSpeak(){pronounce('Wasser');state.diagScore++;setTimeout(()=>{state.diagIndex++;save();render()},200)},
   continueBase(){state.level='base';go('home')},
