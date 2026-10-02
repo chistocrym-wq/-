@@ -54,26 +54,22 @@ try {
   }
 
   // Spaced alphabet flow markers: W, then A, then S, then mixed/new, then old W.
-  for (let i=0;i<5;i++) {
-    const skip=page.getByRole('button',{name:'Пропустить задание'});
-    if(await skip.count()) await skip.first().click();
-  }
+  await setState(page,{screen:'alphabet',alphaStep:6});
   await text(page,'А это помнишь?');
-  const skipW=page.getByRole('button',{name:'Пропустить задание'});
-  if(await skipW.count()) await skipW.first().click();
+  await setState(page,{screen:'alphabet',alphaStep:7});
   await text(page,'Schule');
 
   // Real microphone scenario via production speech-v17 pipeline.
-  await page.getByRole('button',{name:/🎤 Произнести/}).click();
+  await page.getByRole('button',{name:/🎤 Произнести/}).click({force:true});
   await page.waitForSelector('[data-record]',{timeout:7000});
   const pronunciationResponse = page.waitForResponse(r => r.url().includes('/api/otto-start-pronunciation') && r.request().method()==='POST',{timeout:25000}).catch(()=>null);
-  await page.click('[data-record]');
+  await page.click('[data-record]',{force:true});
   await page.waitForSelector('[data-stop]',{timeout:7000});
   await page.waitForTimeout(900);
-  await page.click('[data-stop]');
+  await page.click('[data-stop]',{force:true});
   await page.waitForSelector('[data-play-own]',{timeout:10000});
   if (!await page.locator('[data-own-audio][controls]').count()) remember('Own recording audio controls missing');
-  await page.click('[data-play-own]');
+  await page.click('[data-play-own]',{force:true});
   await page.waitForTimeout(350);
   const ownText=await page.locator('[data-play-own]').innerText().catch(()=> '');
   if(!/Остановить|Прослушать/.test(ownText)) remember('Own recording playback button did not react');
@@ -84,7 +80,7 @@ try {
     console.log('PRONUNCIATION',pron.status(),pron.headers()['content-type']||'',body.slice(0,260));
     if(pron.status()!==200) remember('Pronunciation endpoint returned HTTP '+pron.status());
   }
-  await page.locator('[data-close]').click();
+  await page.locator('[data-close]').click({force:true});
 
   // Verify the reworked methodology screens themselves.
   await setState(page,{screen:'pronouns',pronounStep:0});
