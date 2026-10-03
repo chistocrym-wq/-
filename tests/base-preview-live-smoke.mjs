@@ -106,5 +106,5 @@ try{
  await setState(page,{screen:'numbers',numberStep:10}); await layout(page,320,568,'320-numbers');
 
  if(failures.length)throw new Error(failures.join('\n'));
- console.log('OTTO Start v16 first-entry/onboarding/three-topic smoke passed.');
+ console.log('OTTO Start v17 first-entry/onboarding/three-topic smoke passed.');
 }finally{if(browser)await browser.close();}
