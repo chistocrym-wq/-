@@ -83,6 +83,9 @@ try{
 
  await setState(page,{screen:'reading',readingStarted:false,readingRule:-1,readingPhase:0});
  for(const m of ['w','v','z','j','sch','ch','ei','ie','eu / äu','sp','st','ß','ä / ö / ü','-e / -er'])await textHas(page,m);
+ await setState(page,{screen:'reading',readingStarted:true,readingRule:1,readingPhase:2}); await textHas(page,'Vater');
+ await setState(page,{screen:'reading',readingStarted:true,readingRule:3,readingPhase:2}); await textHas(page,'Juli');
+ await setState(page,{screen:'reading',readingStarted:true,readingRule:10,readingPhase:3}); await textHas(page,'später');
  await setState(page,{screen:'reading',readingStarted:true,readingRule:4,readingPhase:0}); await textHas(page,'Schule');
  await setState(page,{screen:'reading',readingStarted:true,readingRule:4,readingPhase:3}); await textHas(page,'Schuhe');
  await setState(page,{screen:'readingControl',readingControlIndex:0,readingControlResults:[]}); await textHas(page,'1 / 30'); await textHas(page,'Wasser');
@@ -106,5 +109,5 @@ try{
  await setState(page,{screen:'numbers',numberStep:10}); await layout(page,320,568,'320-numbers');
 
  if(failures.length)throw new Error(failures.join('\n'));
- console.log('OTTO Start v17 first-entry/onboarding/three-topic smoke passed.');
+ console.log('OTTO Start v18 first-entry/onboarding/three-topic smoke passed.');
 }finally{if(browser)await browser.close();}
