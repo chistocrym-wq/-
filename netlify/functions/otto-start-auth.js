@@ -52,7 +52,11 @@ function sessionKey(token) { return `session/${sha(token)}`; }
 function progressKey(userId) { return `progress/${userId}`; }
 
 async function getJSON(key) {
-  try { return await store().get(key, { type: 'json' }); } catch { return null; }
+  try {
+    const options = { type: 'json' };
+    if (Netlify.context?.deploy?.context !== 'production') options.consistency = 'strong';
+    return await store().get(key, options);
+  } catch { return null; }
 }
 
 async function derive(secret, salt) {
@@ -230,6 +234,47 @@ async function login(body) {
   return json({ ok: true, session, user: { userId: account.userId, channel: account.channel, login: account.login, name: account.name || '' } });
 }
 
+
+function isPreviewContext() {
+  try { return Netlify.context?.deploy?.context !== 'production'; } catch { return false; }
+}
+
+async function previewRegister(body) {
+  if (!isPreviewContext()) return json({ error: 'Preview registration is unavailable.' }, 404);
+  const login = normalize('email', body.login);
+  const password = String(body.password || '');
+  const name = String(body.name || '').trim().slice(0, 80);
+  if (!login) return json({ error: 'Введите корректный email.' }, 400);
+  if (password.length < 6 || password.length > 200) return json({ error: 'Пароль должен содержать минимум 6 символов.' }, 400);
+  const key = accountKey('email', login);
+  if (await getJSON(key)) return json({ error: 'Аккаунт уже существует. Используйте вход.' }, 409);
+  const salt = randomBytes(16).toString('hex');
+  const passwordHash = await derive(password, salt);
+  const userId = randomUUID();
+  const account = {
+    key, userId, channel: 'email', login, name, salt, passwordHash,
+    previewOnly: true,
+    createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+  };
+  await store().setJSON(key, account);
+  const session = await issueSession(account);
+  return json({ ok: true, session, user: { userId, channel: 'email', login, name } }, 201);
+}
+
+async function previewLogin(body) {
+  if (!isPreviewContext()) return json({ error: 'Preview login is unavailable.' }, 404);
+  const login = normalize('email', body.login);
+  const password = String(body.password || '');
+  if (!login) return json({ error: 'Введите корректный email.' }, 400);
+  const key = accountKey('email', login);
+  const account = await getJSON(key);
+  if (!account || !account.previewOnly || !(await verifyDerived(password, account.salt, account.passwordHash))) {
+    return json({ error: 'Неверный email или пароль.' }, 401);
+  }
+  const session = await issueSession(account);
+  return json({ ok: true, session, user: { userId: account.userId, channel: 'email', login: account.login, name: account.name || '' } });
+}
+
 async function resetPassword(body) {
   const channel = body.channel === 'phone' ? 'phone' : body.channel === 'email' ? 'email' : '';
   const login = normalize(channel, body.login);
@@ -259,6 +304,8 @@ export default async (req) => {
     if (action === 'register') return await register(body);
     if (action === 'login') return await login(body);
     if (action === 'reset') return await resetPassword(body);
+    if (action === 'preview-register') return await previewRegister(body);
+    if (action === 'preview-login') return await previewLogin(body);
 
     const auth = await requireSession(req);
     if (!auth) return json({ error: 'Сессия истекла. Войдите снова.' }, 401);

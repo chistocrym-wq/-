@@ -35,7 +35,7 @@ jobs:
 
           for file in \
             public/client-log-v14.js public/runtime-v14.js public/course-data-v8.js \
-            public/course-data-extra-v8.js public/course-data-core-v8.js public/speech-v17.js public/app-v15.js public/curriculum-v16.js \
+            public/course-data-extra-v8.js public/course-data-core-v8.js public/speech-v17.js public/app-v15.js public/curriculum-v16.js public/base-preview-v3.js \
             netlify/functions/otto-tts.js netlify/functions/otto-start-pronunciation.js \
             netlify/functions/otto-start-support.js netlify/functions/otto-start-client-log.js; do
             node --check "$file"
@@ -95,3 +95,60 @@ jobs:
           if (!alphabet?.alphabet || alphabet.alphabet.length < 30) throw new Error('German alphabet data missing');
           console.log('Curriculum coverage assertions passed.');
           NODE
+
+      - name: Probe Deploy Preview TTS against production
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -e
+          PREVIEW="https://deploy-preview-${{ github.event.pull_request.number }}--otto-start.netlify.app"
+          echo "Preview: $PREVIEW"
+          for i in $(seq 1 30); do
+            code=$(curl -sS -o /tmp/page.html -w '%{http_code}' --max-time 15 "$PREVIEW/base-preview?v=${GITHUB_SHA}" || true)
+            if [ "$code" = "200" ] && grep -q "base-preview-v3.js?v=18" /tmp/page.html; then break; fi
+            echo "Waiting for preview page: HTTP $code ($i/30)"
+            sleep 4
+          done
+          test "$code" = "200"
+
+          probe_tts() {
+            label="$1"; origin="$2"; out="/tmp/${label}.bin"; hdr="/tmp/${label}.headers"
+            status=$(curl -sS -D "$hdr" -o "$out" -w '%{http_code}' --max-time 35 "$origin/api/otto-tts?text=Wasser&mode=normal&kind=text&v=17" || true)
+            ctype=$(awk 'BEGIN{IGNORECASE=1} /^content-type:/{gsub("\\r",""); print $2}' "$hdr" | tail -1)
+            bytes=$(wc -c < "$out" | tr -d ' ')
+            echo "TTS $label: status=$status content-type=$ctype bytes=$bytes"
+            if [ "$status" != "200" ]; then
+              echo "--- $label response ---"
+              cat "$out" || true
+              echo
+            fi
+          }
+          probe_tts production "https://otto-start.netlify.app"
+          probe_tts preview "$PREVIEW"
+
+          status=$(curl -sS -o /tmp/preview-audio.bin -w '%{http_code}' --max-time 35 "$PREVIEW/api/otto-tts?text=Wasser&mode=normal&kind=text&v=17" || true)
+          ctype=$(curl -sSI --max-time 20 "$PREVIEW/api/otto-tts?text=Wasser&mode=normal&kind=text&v=17" | awk 'BEGIN{IGNORECASE=1} /^content-type:/{gsub("\\r",""); print $2}' | tail -1)
+          echo "Preview TTS diagnostic only: status=$status content-type=$ctype"
+          if [ "$status" != "200" ]; then
+            echo "TTS BLOCKER: existing backend is unavailable; no voice/model/backend substitution was made."
+          fi
+
+      - name: Install Playwright for live preview smoke
+        if: always() && github.event_name == 'pull_request'
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+
+      - name: Run live preview sound and microphone smoke
+        if: always() && github.event_name == 'pull_request'
+        env:
+          BASE_URL: https://deploy-preview-${{ github.event.pull_request.number }}--otto-start.netlify.app
+        run: node tests/base-preview-live-smoke.mjs
+
+      - name: Upload mobile preview screenshots
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: otto-start-three-topics-v18
+          path: test-artifacts/*.png
+          if-no-files-found: warn
