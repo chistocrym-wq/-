@@ -48,7 +48,7 @@ const READING_RULES=[
 {key:'w',label:'w',sound:'обычно звучит как русский «в»',words:[{word:'Wasser',ru:'вода'},{word:'wohnen',ru:'жить'},{word:'Wo',ru:'где'}],transfer:{word:'Was',ru:'что'}},
 {key:'v',label:'v',sound:'во многих знакомых словах звучит как «ф»',words:[{word:'vier',ru:'четыре'},{word:'vierzehn',ru:'четырнадцать'},{word:'vierzig',ru:'сорок'}],transfer:{word:'Vater',ru:'отец'}},
 {key:'z',label:'z',sound:'обычно звучит как «ц»',words:[{word:'zwei',ru:'два'},{word:'zehn',ru:'десять'},{word:'Zug',ru:'поезд'}],transfer:{word:'Zimmer',ru:'комната'}},
-{key:'j',label:'j',sound:'обычно звучит как «й»',words:[{word:'Ja',ru:'да'},{word:'Jahre',ru:'годы'},{word:'Januar',ru:'январь'}],transfer:{word:'Juli',ru:'июль'}},
+{key:'j',label:'j',sound:'обычно звучит как «й»',words:[{word:'Ja',ru:'да'},{word:'Jahre',ru:'годы'},{word:'Juli',ru:'июль'}],transfer:{word:'jetzt',ru:'сейчас'}},
 {key:'sch',label:'sch',sound:'читается как «ш»',words:[{word:'Schule',ru:'школа'},{word:'schreiben',ru:'писать'},{word:'Schwester',ru:'сестра'}],transfer:{word:'Schuhe',ru:'обувь'}},
 {key:'ch-soft',label:'ch',sound:'после i/e часто звучит мягко',words:[{word:'ich',ru:'я'},{word:'nicht',ru:'не'},{word:'möchten',ru:'хотеть вежливо'}],transfer:{word:'richtig',ru:'правильно'}},
 {key:'ch-hard',label:'ch',sound:'после a/o/u/au звучит твёрже',words:[{word:'machen',ru:'делать'},{word:'brauchen',ru:'нуждаться'},{word:'auch',ru:'тоже'}],transfer:{word:'suchen',ru:'искать'}},
