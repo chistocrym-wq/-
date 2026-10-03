@@ -54,9 +54,11 @@ try{
  await page.goto(url,{waitUntil:'domcontentloaded',timeout:30000});
  await page.evaluate(()=>localStorage.clear()); await page.reload({waitUntil:'domcontentloaded'});
  await page.waitForSelector('#authEmail',{timeout:10000});
+ await page.waitForFunction(()=>document.body.innerText.includes('Создайте профиль'),null,{timeout:10000});
  await textHas(page,'Создайте профиль');
  await page.locator('#authName').fill('Smoke'); await page.locator('#authEmail').fill(email); await page.locator('#authPassword').fill(password);
- await page.getByRole('button',{name:'Создать профиль'}).click(); await page.waitForTimeout(700);
+ await page.getByRole('button',{name:'Создать профиль'}).click();
+ await page.waitForFunction(()=>document.body.innerText.includes('Привет! Я OTTO')||document.body.innerText.includes('Аккаунт уже существует'),null,{timeout:10000});
  await textHas(page,'Привет! Я OTTO');
  for(let i=0;i<4;i++){await page.getByRole('button',{name:'Дальше'}).click();await page.waitForTimeout(80)}
  await textHas(page,'Начать с самого начала');
@@ -67,7 +69,9 @@ try{
  await page.getByRole('button',{name:'Открыть'}).first().click(); await textHas(page,'Экран 1 из 5');
  await page.getByRole('button',{name:'Пропустить инструкцию'}).click(); await textHas(page,'Настройки');
 
- await page.getByRole('button',{name:'Выйти'}).click(); await textHas(page,'Создайте профиль');
+ await page.getByRole('button',{name:'Выйти'}).click();
+ await page.waitForFunction(()=>document.body.innerText.includes('Создайте профиль'),null,{timeout:10000});
+ await textHas(page,'Создайте профиль');
  await page.getByRole('button',{name:/Уже есть профиль/}).click();
  await page.locator('#authEmail').fill(email); await page.locator('#authPassword').fill(password); await page.getByRole('button',{name:'Войти'}).click();
  await page.waitForFunction(()=>document.body.innerText.includes('Ваш прогресс')||document.body.innerText.includes('Как OTTO проверяет прогресс')||document.body.innerText.includes('Неверный email или пароль.'),null,{timeout:10000}).catch(()=>{});
@@ -85,9 +89,9 @@ try{
 
  await setState(page,{screen:'reading',readingStarted:false,readingRule:-1,readingPhase:0});
  for(const m of ['w','v','z','j','sch','ch','ei','ie','eu / äu','sp','st','ß','ä / ö / ü','-e / -er'])await textHas(page,m);
- await setState(page,{screen:'reading',readingStarted:true,readingRule:1,readingPhase:2}); await textHas(page,'Vater');
- await setState(page,{screen:'reading',readingStarted:true,readingRule:3,readingPhase:2}); await textHas(page,'Juli');
- await setState(page,{screen:'reading',readingStarted:true,readingRule:10,readingPhase:3}); await textHas(page,'später');
+ await setState(page,{screen:'reading',readingStarted:true,readingRule:1,readingPhase:3}); await textHas(page,'Vater');
+ await setState(page,{screen:'reading',readingStarted:true,readingRule:3,readingPhase:3}); await textHas(page,'Juli');
+ await setState(page,{screen:'reading',readingStarted:true,readingRule:10,readingPhase:3}); await textHas(page,'Spiel');
  await setState(page,{screen:'reading',readingStarted:true,readingRule:4,readingPhase:0}); await textHas(page,'Schule');
  await setState(page,{screen:'reading',readingStarted:true,readingRule:4,readingPhase:3}); await textHas(page,'Schuhe');
  await setState(page,{screen:'readingControl',readingControlIndex:0,readingControlResults:[]}); await textHas(page,'1 / 30'); await textHas(page,'Wasser');
