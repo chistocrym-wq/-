@@ -52,7 +52,11 @@ function sessionKey(token) { return `session/${sha(token)}`; }
 function progressKey(userId) { return `progress/${userId}`; }
 
 async function getJSON(key) {
-  try { return await store().get(key, { type: 'json' }); } catch { return null; }
+  try {
+    const options = { type: 'json' };
+    if (Netlify.context?.deploy?.context !== 'production') options.consistency = 'strong';
+    return await store().get(key, options);
+  } catch { return null; }
 }
 
 async function derive(secret, salt) {
