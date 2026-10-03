@@ -9,7 +9,7 @@ const clone=x=>JSON.parse(JSON.stringify(x));
 const DEFAULT={
   screen:'register',regStep:'welcome',email:'',level:null,
   diagIndex:0,diagScore:0,
-  alphaStep:0,readingRule:0,readingPhase:0,readingRecallStep:0,readingTestStep:0,readingTestScore:0,nounStep:0,pronounStep:0,verbStep:0,sentenceStep:0,questionStep:0,prepositionStep:0,conjunctionStep:0,reviewStep:0,sessions:0,firstName:'',lastName:'',
+  alphaStep:0,readingRule:0,readingPhase:0,readingRecallStep:0,readingAttempts:0,readingTestStep:0,readingTestScore:0,nounStep:0,pronounStep:0,verbStep:0,sentenceStep:0,questionStep:0,prepositionStep:0,conjunctionStep:0,reviewStep:0,sessions:0,firstName:'',lastName:'',
   feedback:'',lessonInput:'',assembly:[],
   completed:[],currentStage:'Базовый немецкий',
   errors:[]
@@ -29,52 +29,54 @@ function go(screen){state.screen=screen;state.feedback='';state.assembly=[];save
 function complete(id){if(!state.completed.includes(id)){state.completed.push(id);state.sessions=(state.sessions||0)+1}save()}
 function addError(id,item,kind,detail){const existing=state.errors.find(x=>x.id===id);if(existing){existing.count=(existing.count||1)+1;existing.detail=detail}else state.errors.push({id,item,kind,detail,count:1});save()}
 function progress(){
- const totalUnits=30+15+6+13+10+11+1+7;
+ const units={alphabet:9,reading:22,readingTest:5,nouns:9,pronouns:9,verbs:11,sentence:4,question:3,preposition:3,conjunction:3};
+ const total=Object.values(units).reduce((a,b)=>a+b,0);
  let done=0;
- done+=state.completed.includes('alphabet')?30:Math.min(30,Math.max(0,Number(state.alphaStep||0)-1));
- done+=state.completed.includes('reading')?15:Math.min(15,Math.max(0,Number(state.readingRule||0))+(Number(state.readingPhase||0)/5));
- done+=state.completed.includes('readingTest')?6:Math.min(6,Math.max(0,Number(state.readingTestStep||0)));
- done+=state.completed.includes('pronouns')?13:Math.min(13,Math.max(0,Number(state.pronounStep||0)));
- done+=state.completed.includes('verbs')?10:Math.min(10,Math.max(0,Number(state.verbStep||0)));
- done+=state.completed.includes('nouns')?11:Math.min(11,Math.max(0,Number(state.nounStep||0)));
- done+=state.completed.includes('numbers')?1:0;
- done+=state.completed.includes('sentence')?7:Math.min(7,Math.max(0,Number(state.sentenceStep||0)));
- return Math.max(0,Math.min(100,Math.round(done/totalUnits*100)));
+ const add=(id,partial)=>{done+=state.completed.includes(id)?units[id]:Math.max(0,Math.min(units[id],partial||0))};
+ add('alphabet',Number(state.alphaStep||0));
+ const readingPartial=Math.min(20,Number(state.readingRule||0)*5+Number(state.readingPhase||0))+(Number(state.readingRule||0)>=READING_RULES.length?Number(state.readingRecallStep||0):0);
+ add('reading',readingPartial);
+ add('readingTest',Number(state.readingTestStep||0));
+ add('nouns',Number(state.nounStep||0));
+ add('pronouns',Number(state.pronounStep||0));
+ add('verbs',Number(state.verbStep||0));
+ add('sentence',Number(state.sentenceStep||0));
+ add('question',Number(state.questionStep||0));
+ add('preposition',Number(state.prepositionStep||0));
+ add('conjunction',Number(state.conjunctionStep||0));
+ return Math.max(0,Math.min(100,Math.round(done/total*100)))
 }
 function currentTopic(){
- if(state.screen==='alphabet'||!state.completed.includes('alphabet'))return 'Алфавит';
+ if(state.screen==='alphabet'||!state.completed.includes('alphabet'))return 'Алфавит и свои данные';
  if(state.screen==='reading'||!state.completed.includes('reading'))return 'Как читаются немецкие слова';
- if(state.screen==='readingTest'||state.screen==='readingPraise'||!state.completed.includes('readingTest'))return 'Уже умеешь читать?';
+ if(state.screen==='readingTest'||state.screen==='readingPraise'||!state.completed.includes('readingTest'))return 'Мини-проверка чтения';
+ if(state.screen==='noun'||!state.completed.includes('nouns'))return 'Первые существительные';
  if(state.screen==='pronouns'||!state.completed.includes('pronouns'))return 'Личные местоимения';
- if(state.screen==='verb'||!state.completed.includes('verbs'))return 'Основные глаголы';
- if(state.screen==='noun'||!state.completed.includes('nouns'))return 'Существительные';
- if(state.screen==='numbers'||!state.completed.includes('numbers'))return 'Числа';
- if(state.screen==='sentence'||!state.completed.includes('sentence'))return 'Как строится предложение';
- return 'Финальная проверка';
+ if(state.screen==='verb'||!state.completed.includes('verbs'))return 'Первые глаголы';
+ if(state.screen==='sentence'||!state.completed.includes('sentence'))return 'Первое предложение';
+ if(state.screen==='question'||!state.completed.includes('question'))return 'Wo? — где?';
+ if(state.screen==='preposition'||!state.completed.includes('preposition'))return 'aus …';
+ if(state.screen==='conjunction'||!state.completed.includes('conjunction'))return 'und';
+ return 'Методика Preview пройдена';
 }
 function continueAction(){
  const t=currentTopic();
- if(t==='Алфавит')return 'BP.alphabet()';
+ if(t==='Алфавит и свои данные')return 'BP.alphabet()';
  if(t==='Как читаются немецкие слова')return 'BP.reading()';
- if(t==='Уже умеешь читать?')return 'BP.readingTest()';
+ if(t==='Мини-проверка чтения')return 'BP.readingTest()';
+ if(t==='Первые существительные')return 'BP.noun()';
  if(t==='Личные местоимения')return 'BP.pronouns()';
- if(t==='Основные глаголы')return 'BP.verb()';
- if(t==='Существительные')return 'BP.noun()';
- if(t==='Числа')return 'BP.numbers()';
- if(t==='Как строится предложение')return 'BP.sentence()';
- return 'BP.exam()';
+ if(t==='Первые глаголы')return 'BP.verb()';
+ if(t==='Первое предложение')return 'BP.sentence()';
+ if(t==='Wo? — где?')return 'BP.question()';
+ if(t==='aus …')return 'BP.preposition()';
+ if(t==='und')return 'BP.conjunction()';
+ return 'BP.learn()';
 }
 function progressStats(){
- const learned=Math.max(0,
-  Math.min(30,Math.max(0,Number(state.alphaStep||0)-1))+
-  Math.min(15,Number(state.readingRule||0))+
-  Math.min(9,Math.floor(Number(state.pronounStep||0)/2))+
-  Math.min(6,Math.floor(Number(state.verbStep||0)/2))+
-  Math.min(5,Math.floor(Number(state.nounStep||0)/2))
- );
- return {pct:progress(),done:state.completed.length,learned,review:state.errors.length,sessions:Number(state.sessions||0)}
+ const learned=Math.round(progress()*0.45);
+ return {pct:progress(),done:state.completed.filter(x=>['alphabet','reading','readingTest','nouns','pronouns','verbs','sentence','question','preposition','conjunction'].includes(x)).length,learned,review:state.errors.length,sessions:Math.max(1,Number(state.sessions||0))}
 }
-function progressStats(){return {pct:progress(),done:state.completed.length,learned:Math.max(0,state.completed.length*5),review:state.errors.length,sessions:Math.max(1,state.completed.length)}}
 function setFeedback(html){state.feedback=html;save()}
 function feedback(){return state.feedback?'<div class="bp-feedback '+(state.feedback.includes('Что произошло')?'bad':'good')+'">'+state.feedback+'</div>':''}
 
@@ -515,29 +517,41 @@ window.BP={
   skipAlphabet(){complete('alphabet');BP.reading()},
   finishAlphabet(){complete('alphabet');BP.reading()},
 
-  reading(){state.readingRule=0;state.readingPhase=0;state.readingRecallStep=0;state.feedback='';go('reading')},
-  readingNext(){state.feedback='';state.readingPhase++;if(state.readingPhase>4){state.readingPhase=0;state.readingRule++}save();render()},
+  reading(){state.readingRule=0;state.readingPhase=0;state.readingRecallStep=0;state.readingAttempts=0;state.feedback='';go('reading')},
+  readingNext(){state.feedback='';state.readingAttempts=0;state.readingPhase++;if(state.readingPhase>4){state.readingPhase=0;state.readingRule++}save();render()},
   readingBack(){state.feedback='';if(state.readingPhase>0)state.readingPhase--;else if(state.readingRule>0){state.readingRule--;state.readingPhase=4}save();render()},
   readingSkip(){BP.readingNext()},
   readingChoice(ok,b){
     const r=READING_RULES[state.readingRule];
     b.classList.add(ok?'correct':'wrong');
-    if(ok){state.feedback='';setTimeout(()=>BP.readingNext(),320)}
+    if(ok){state.feedback='';state.readingAttempts=0;setTimeout(()=>BP.readingNext(),320)}
     else{
+      state.readingAttempts=Number(state.readingAttempts||0)+1;
       addError('reading-'+state.readingRule,r.key,'чтение',r.hint);
-      setFeedback('<b>Что произошло</b> Правило пока не сработало.<br><b>Как правильно</b> '+esc(r.hint)+'<br><b>Попробуй ещё раз</b>');
-      save();setTimeout(render,500)
+      if(state.readingAttempts<2){
+        setFeedback('<b>Что произошло</b> Правило пока не сработало.<br><b>Как правильно</b> '+esc(r.hint)+'<br><b>Попробуй ещё раз</b>');
+        save();setTimeout(render,500)
+      }else{
+        setFeedback('<b>Сохранили слабое место</b> '+esc(r.hint)+'<br>Не застреваем: позже будет другое слово на тот же принцип.');
+        save();setTimeout(()=>BP.readingNext(),1050)
+      }
     }
   },
   readingSpeak(word){pronounce(word);setTimeout(()=>BP.readingNext(),180)},
   readingWriteCurrent(){
     const r=READING_RULES[state.readingRule];
     const v=norm(document.getElementById('readingInput')?.value||'');
-    if(v===norm(r.listen)){state.feedback='';BP.readingNext()}
+    if(v===norm(r.listen)){state.feedback='';state.readingAttempts=0;BP.readingNext()}
     else{
+      state.readingAttempts=Number(state.readingAttempts||0)+1;
       addError('reading-write-'+state.readingRule,r.listen,'написание','Слово не получилось написать на слух.');
-      setFeedback('<b>Что произошло</b> Написание пока неточное.<br><b>Как правильно</b> '+esc(r.listen)+'.<br><b>Что дальше</b> Это правило вернётся позже на другом слове.');
-      state.readingPhase=0;state.readingRule++;save();setTimeout(render,950)
+      if(state.readingAttempts<2){
+        setFeedback('<b>Что произошло</b> Написание пока неточное.<br><b>Как правильно</b> '+esc(r.listen)+'.<br><b>Попробуй ещё раз</b>');
+        save();render()
+      }else{
+        setFeedback('<b>Сохранили слабое место</b> Правильно: '+esc(r.listen)+'. Позже вернём правило на другом слове.');
+        save();setTimeout(()=>BP.readingNext(),1050)
+      }
     }
   },
   readingRecallSpeak(word){pronounce(word);state.readingRecallStep++;save();setTimeout(render,180)},
