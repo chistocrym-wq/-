@@ -281,3 +281,28 @@ body > [data-netlify-deploy-id]{display:none!important}
   .bp-praise img{width:80px;height:80px;max-width:80px;max-height:80px}
   .bp-bottom button{font-size:8.2px}
 }
+
+
+/* v16: interactive onboarding + first three complete topics */
+.bp-tutorial-head{display:flex;align-items:center;gap:12px;padding:14px 16px 0}
+.bp-tutorial-head img{width:72px;height:72px;object-fit:contain;flex:0 0 auto}
+.bp-tutorial-head small{display:block;margin-top:5px;color:var(--bp-muted,#647b7d);font-size:11px;font-weight:800}
+.bp-rule-map{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px;margin-top:12px}
+.bp-rule-map span{display:flex;align-items:center;justify-content:center;min-height:42px;padding:7px;border:1px solid #d7e5e2;border-radius:12px;background:#f6faf9;color:#173f43;font-weight:850;font-size:13px;text-align:center}
+.bp-path-item.soon{opacity:.78}
+.bp-path-item.soon .state{font-size:10px}
+.bp-pronoun{cursor:pointer}
+.bp-pronoun-grid button.bp-pronoun{border:1px solid #d7e5e2;background:#fff}
+@media(max-width:520px){
+  .bp-tutorial-head img{width:64px;height:64px}
+  .bp-rule-map{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media(max-width:360px){
+  .bp-tutorial-head img{width:58px;height:58px}
+  .bp-rule-map{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:320px){
+  .bp-tutorial-head img{width:54px;height:54px}
+  .bp-rule-map{gap:5px}
+  .bp-rule-map span{min-height:38px;padding:5px;font-size:12px}
+}
