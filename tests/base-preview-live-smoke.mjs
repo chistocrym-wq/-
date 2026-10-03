@@ -6,7 +6,7 @@ if(!base) throw new Error('BASE_URL is required');
 const url=base+'/base-preview';
 const failures=[];
 const remember=m=>{failures.push(m);console.error('SMOKE:',m)};
-const email='smoke+'+String(process.env.GITHUB_SHA||Date.now()).slice(0,12)+'@example.com';
+const email='smoke+'+String(process.env.GITHUB_SHA||Date.now()).slice(0,10)+'-'+String(process.env.GITHUB_RUN_ID||Date.now())+'-'+String(process.env.GITHUB_RUN_ATTEMPT||'1')+'@example.com';
 const password='otto-preview-16';
 let browser;
 fs.mkdirSync('test-artifacts',{recursive:true});
@@ -53,6 +53,7 @@ try{
 
  await page.goto(url,{waitUntil:'domcontentloaded',timeout:30000});
  await page.evaluate(()=>localStorage.clear()); await page.reload({waitUntil:'domcontentloaded'});
+ await page.waitForSelector('#authEmail',{timeout:10000});
  await textHas(page,'Создайте профиль');
  await page.locator('#authName').fill('Smoke'); await page.locator('#authEmail').fill(email); await page.locator('#authPassword').fill(password);
  await page.getByRole('button',{name:'Создать профиль'}).click(); await page.waitForTimeout(700);
@@ -68,7 +69,8 @@ try{
 
  await page.getByRole('button',{name:'Выйти'}).click(); await textHas(page,'Создайте профиль');
  await page.getByRole('button',{name:/Уже есть профиль/}).click();
- await page.locator('#authEmail').fill(email); await page.locator('#authPassword').fill(password); await page.getByRole('button',{name:'Войти'}).click(); await page.waitForTimeout(900);
+ await page.locator('#authEmail').fill(email); await page.locator('#authPassword').fill(password); await page.getByRole('button',{name:'Войти'}).click();
+ await page.waitForFunction(()=>document.body.innerText.includes('Ваш прогресс')||document.body.innerText.includes('Как OTTO проверяет прогресс')||document.body.innerText.includes('Неверный email или пароль.'),null,{timeout:10000}).catch(()=>{});
  await textHas(page,'Ваш прогресс');
  const afterLogin=await getState(page);
  if(!afterLogin.onboardingCompleted)remember('onboardingCompleted not restored from server');
