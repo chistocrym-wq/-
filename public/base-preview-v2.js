@@ -9,7 +9,7 @@ const clone=x=>JSON.parse(JSON.stringify(x));
 const DEFAULT={
   screen:'register',regStep:'welcome',email:'',level:null,
   diagIndex:0,diagScore:0,
-  alphaStep:0,readingRule:0,readingPhase:0,readingTestStep:0,readingTestScore:0,pronounStep:0,verbStep:0,nounStep:0,sentenceStep:0,reviewStep:0,sessions:0,
+  alphaStep:0,readingRule:0,readingPhase:0,readingRecallStep:0,readingTestStep:0,readingTestScore:0,nounStep:0,pronounStep:0,verbStep:0,sentenceStep:0,questionStep:0,prepositionStep:0,conjunctionStep:0,reviewStep:0,sessions:0,firstName:'',lastName:'',
   feedback:'',lessonInput:'',assembly:[],
   completed:[],currentStage:'Базовый немецкий',
   errors:[]
@@ -119,41 +119,88 @@ function home(){
 }
 function pathList(){
   const rows=[
-    ['alphabet','🔤','Алфавит','A–Z, затем Ä · Ö · Ü · ß','BP.alphabet()'],
-    ['reading','📖','Как читаются немецкие слова','sch · w · ei · ie · ch и другие правила','BP.reading()'],
-    ['readingTest','✓','Уже умеешь читать?','мини-проверка после алфавита и чтения','BP.readingTest()'],
-    ['pronouns','👤','Личные местоимения','ich · du · er · sie …','BP.pronouns()'],
-    ['verbs','⚡','Основные глаголы','слово → слух → письмо → готовая фраза','BP.verb()'],
-    ['nouns','🏠','Существительные','слово сразу вместе с артиклем','BP.noun()'],
-    ['numbers','🔢','Числа','возраст · цена · время · адрес','BP.numbers()'],
-    ['sentence','🧩','Как строится предложение','КТО · ДЕЙСТВИЕ · ОСТАЛЬНОЕ','BP.sentence()']
+    ['alphabet','🔤','Алфавит и свои данные','алфавит → имя → фамилия → сложные буквы','BP.alphabet()'],
+    ['reading','📖','Как читаются немецкие слова','w · ei · ie · sch','BP.reading()'],
+    ['readingTest','✓','Уже умеешь читать?','слух · чтение · речь · написание','BP.readingTest()'],
+    ['nouns','👨‍👩‍👧','Первые существительные','die Familie · der Mann · die Frau · das Kind · der Freund','BP.noun()'],
+    ['pronouns','👤','Личные местоимения','ich · du · Sie → затем er · sie · wir','BP.pronouns()'],
+    ['verbs','🏃','Первые глаголы','heißen · kommen · wohnen · sprechen · lernen','BP.verb()'],
+    ['sentence','🧱','Первое предложение','Ich wohne in Berlin.','BP.sentence()'],
+    ['question','❓','Первое вопросительное слово','Wo? → Wo wohnen Sie?','BP.question()'],
+    ['preposition','📍','Первая готовая связка','aus Russland','BP.preposition()'],
+    ['conjunction','🔗','Первая связка предложений','und','BP.conjunction()']
   ];
-  return '<div class="bp-path">'+rows.map(r=>'<button class="bp-path-item" onclick="'+r[4]+'"><span class="ico">'+r[1]+'</span><span><b>'+r[2]+'</b><small>'+r[3]+'</small></span><span class="state">'+(state.completed.includes(r[0])?'✓':'Открыть')+'</span></button>').join('')+'<button class="bp-path-item soon" onclick="BP.soonA1()"><span class="ico">🎯</span><span><b>Подготовка к A1</b><small>следующий этап</small></span><span class="state">Скоро</span></button></div>'
+  return '<div class="bp-path">'+rows.map(r=>'<button class="bp-path-item" onclick="'+r[4]+'"><span class="ico">'+r[1]+'</span><span><b>'+r[2]+'</b><small>'+r[3]+'</small></span><span class="state">'+(state.completed.includes(r[0])?'✓':'Открыть')+'</span></button>').join('')+'<button class="bp-path-item soon" onclick="BP.soonA1()"><span class="ico">🌱</span><span><b>Дальше</b><small>остальной базовый курс развернём после утверждения этой методики</small></span><span class="state">Позже</span></button></div>'
 }
-
-function learn(){app(screenHead('Учусь','Базовые темы','BP.home()')+pathList(),'learn')}
-
 const ALPHABET=[
-['A','A','Anna'],['B','Be','Bus'],['C','Ce','Café'],['D','De','Deutsch'],['E','E','Essen'],['F','Ef','Frau'],['G','Ge','Guten Tag'],['H','Ha','Haus'],['I','I','ich'],['J','Jot','ja'],['K','Ka','Kaffee'],['L','El','lernen'],['M','Em','Mutter'],['N','En','nein'],['O','O','Oma'],['P','Pe','Pass'],['Q','Ku','Quelle'],['R','Er','rot'],['S','Es','Sonne'],['T','Te','Tag'],['U','U','Uhr'],['V','Vau','Vater'],['W','We','Wasser'],['X','Ix','Taxi'],['Y','Ypsilon','Yoga'],['Z','Zett','Zeit'],['Ä','Ä','Äpfel'],['Ö','Ö','Österreich'],['Ü','Ü','Tür'],['ß','Eszett','Straße']
+['A','а'],['B','бэ'],['C','цэ'],['D','дэ'],['E','э'],['F','эф'],['G','гэ'],['H','ха'],['I','и'],['J','йот'],['K','ка'],['L','эль'],['M','эм'],['N','эн'],['O','о'],['P','пэ'],['Q','ку'],['R','эр'],['S','эс'],['T','тэ'],['U','у'],['V','фау'],['W','вэ'],['X','икс'],['Y','юпсилон'],['Z','цэт'],['Ä','э'],['Ö','ё'],['Ü','ю'],['ß','эс-цэт']
 ];
-const ALPHA_TOTAL=ALPHABET.length+2;
+const TRICKY_LETTERS=['J','V','W','Y','Z','Ä','Ö','Ü','ß'];
+const ALPHA_TOTAL=9;
+function personalValue(v){return String(v||'').trim().replace(/[^A-Za-zÄÖÜäöüß -]/g,'').slice(0,40)}
+function spellValue(v){return personalValue(v).toUpperCase().replace(/ß/g,'ẞ').split('').filter(x=>/[A-ZÄÖÜẞ]/.test(x))}
+function spellButtons(v){
+  const letters=spellValue(v);
+  return '<div class="bp-tokens">'+letters.map(ch=>'<button class="bp-token" type="button" onclick="BP.play(\''+(ch==='ẞ'?'ß':ch)+'\',this,\'letter\')">'+ch+'</button>').join('')+'</div>'
+}
+function spellSpeech(v){return spellValue(v).map(x=>x==='ẞ'?'ß':x).join(' ')}
 function alphabet(){state.alphaStep=0;state.feedback='';go('alphabet')}
 function renderAlpha(){
  const s=state.alphaStep;
- let b=screenHead('Алфавит','A–Z · Ä · Ö · Ü · ß','BP.learn()')+lessonProgress('Алфавит',s,ALPHA_TOTAL);
+ let b=screenHead('Алфавит и свои данные','сначала практический навык','BP.learn()')+lessonProgress('Первый блок',s,ALPHA_TOTAL);
  if(s===0){
-   b+=titleCard('Немецкий алфавит','Сначала увидим порядок')+'<div class="bp-alphabet-map">'+ALPHABET.map(x=>'<span>'+x[0]+'</span>').join('')+'</div><p class="bp-lead" style="margin-top:12px">Не нужно запоминать всё сразу. Дальше пойдём по одной букве.</p><button class="bp-btn primary block" style="margin-top:12px" onclick="BP.alphaNext()">Начать с A</button></div>';
- } else if(s<=ALPHABET.length){
-   const idx=s-1, row=ALPHABET[idx], next=ALPHABET[Math.min(idx+1,ALPHABET.length-1)][0], prev=ALPHABET[Math.max(0,idx-1)][0];
-   b+=titleCard('Буква '+(idx+1)+' из '+ALPHABET.length,row[0])+
-      '<div class="bp-letter">'+row[0]+'</div><div class="bp-translation">Название: '+row[1]+'</div>'+
-      '<div class="bp-audio"><button class="bp-btn secondary" onclick="BP.play(\''+row[0]+'\',this,\'letter\')">🔊 Буква</button><button class="bp-btn secondary" onclick="BP.play(\''+row[2].replace(/'/g,"\\'")+'\',this)">🔊 '+row[2]+'</button></div>'+
-      '<div class="bp-word">'+row[2]+'</div><p class="bp-lead">Найди букву '+row[0]+'.</p>'+
-      choice([prev,row[0],next],1,'BP.alphaChoice')+'</div>';
- } else {
-   b+=titleCard('Готово','Алфавит пройден')+'<p class="bp-lead">Теперь отдельно разберём, как буквы и сочетания читаются внутри немецких слов.</p><button class="bp-btn primary block" style="margin-top:12px" onclick="BP.finishAlphabet()">Перейти к правилам чтения</button></div>';
+   b+=titleCard('Немецкий алфавит','A–Z · Ä Ö Ü ß','Сейчас не нужно зубрить всё. Важно понять, как буквы называются, чтобы уметь продиктовать свои данные.')+
+      '<div class="bp-alphabet-map">'+ALPHABET.map(x=>'<button type="button" class="bp-token" onclick="BP.play(\''+x[0]+'\',this,\'letter\')" title="'+x[1]+'">'+x[0]+'</button>').join('')+'</div>'+
+      '<button class="bp-btn primary block" style="margin-top:12px" onclick="BP.alphaNext()">Попробуем на имени</button></div>';
  }
- b+=lessonNav(s>0?'BP.alphaBack()':'','BP.alphaSkipTask()','');
+ if(s===1){
+   b+=titleCard('Пример','Как продиктовать имя Anna?')+
+      '<div class="bp-word">Anna</div><div class="bp-assembly"><span>A</span><span>N</span><span>N</span><span>A</span></div>'+
+      '<button class="bp-btn secondary block" onclick="BP.play(\'A N N A\',this,\'letter\')">🔊 A – N – N – A</button>'+
+      '<button class="bp-btn primary block" style="margin-top:10px" onclick="BP.alphaNext()">Теперь своё имя</button></div>';
+ }
+ if(s===2){
+   b+=titleCard('Ваше имя','Напишите своё имя')+
+      '<input id="firstNameInput" class="bp-input" autocomplete="given-name" placeholder="Например, Julia" value="'+esc(state.firstName||'')+'">'+
+      '<button class="bp-btn primary block" style="margin-top:10px" onclick="BP.saveFirstName()">Разобрать по буквам</button></div>';
+ }
+ if(s===3){
+   const n=state.firstName||'Julia';
+   b+=titleCard('Ваше имя',n,'Нажмите на любую букву, чтобы услышать её немецкое название.')+
+      spellButtons(n)+
+      '<button class="bp-btn primary block" style="margin-top:10px" onclick="BP.spellName(\''+esc(spellSpeech(n))+'\')">🎤 Продиктовать имя по буквам</button>'+
+      '<button class="bp-btn secondary block" style="margin-top:8px" onclick="BP.alphaNext()">Дальше: фамилия</button></div>';
+ }
+ if(s===4){
+   b+=titleCard('Теперь фамилия','Напишите свою фамилию')+
+      '<input id="lastNameInput" class="bp-input" autocomplete="family-name" placeholder="Например, Petrova" value="'+esc(state.lastName||'')+'">'+
+      '<button class="bp-btn primary block" style="margin-top:10px" onclick="BP.saveLastName()">Разобрать по буквам</button></div>';
+ }
+ if(s===5){
+   const n=state.lastName||'Petrova';
+   b+=titleCard('Ваша фамилия',n,'Тот же принцип: видим буквы → слушаем → произносим сами.')+
+      spellButtons(n)+
+      '<button class="bp-btn primary block" style="margin-top:10px" onclick="BP.spellName(\''+esc(spellSpeech(n))+'\')">🎤 Продиктовать фамилию по буквам</button>'+
+      '<button class="bp-btn secondary block" style="margin-top:8px" onclick="BP.alphaNext()">Дальше</button></div>';
+ }
+ if(s===6){
+   b+=titleCard('Сложные буквы','На них стоит обратить особое внимание')+
+      '<div class="bp-tokens">'+TRICKY_LETTERS.map(ch=>'<button class="bp-token" type="button" onclick="BP.play(\''+ch+'\',this,\'letter\')">🔊 '+ch+'</button>').join('')+'</div>'+
+      '<p class="bp-lead" style="margin-top:12px">J · V · W · Y · Z · Ä · Ö · Ü · ß. Слушаем по одной, но не застреваем на каждой.</p>'+
+      '<button class="bp-btn primary block" style="margin-top:10px" onclick="BP.alphaNext()">Небольшая проверка</button></div>';
+ }
+ if(s===7){
+   b+=titleCard('На слух','Какую букву назвал OTTO?')+
+      '<button class="bp-btn secondary block" onclick="BP.play(\'W\',this,\'letter\')">🔊 Слушать</button>'+
+      choice(['V','W','Y'],1,'BP.alphaChoice')+feedback()+'</div>';
+ }
+ if(s===8){
+   b+=titleCard('Буква внутри знакомых слов','W → Wasser · wohnen · wo')+
+      '<div class="bp-audio"><button class="bp-btn secondary" onclick="BP.play(\'Wasser\',this)">🔊 Wasser</button><button class="bp-btn secondary" onclick="BP.play(\'wohnen\',this)">🔊 wohnen</button><button class="bp-btn secondary" onclick="BP.play(\'wo\',this)">🔊 wo</button></div>'+
+      '<p class="bp-lead">Теперь переходим от названий букв к тому, как они реально читаются в немецких словах.</p>'+
+      '<button class="bp-btn primary block" style="margin-top:10px" onclick="BP.finishAlphabet()">Перейти к чтению</button></div>';
+ }
+ b+=lessonNav(s>0?'BP.alphaBack()':'','BP.alphaSkipTask()','BP.skipAlphabet()');
  app(b,'learn')
 }
 
@@ -162,134 +209,271 @@ function nextSession(){state.reviewStep=0;go('nextSession')}
 function nextSessionScreen(){const s=state.reviewStep;if(s>=REVIEWS.length)return app(screenHead('Новое занятие','Старое уже вспомнили','BP.home()')+titleCard('Готово','Отлично. Теперь новая тема.','После 3–7 коротких повторений переходим к новому материалу.')+'<button class="bp-btn primary block" style="margin-top:14px" onclick="BP.pronouns()">Местоимения</button></div>','learn');const r=REVIEWS[s];let b=screenHead('Сначала вспомним вчерашнее','Короткое повторение','BP.home()')+lessonProgress('А это помнишь?',s,REVIEWS.length)+titleCard('Повторение',r.q);if(r.audio)b+='<button class="bp-btn secondary block" onclick="BP.play(\''+r.audio+'\',this)">🔊 Слушать</button>';if(r.big)b+='<div class="bp-word">'+r.big+'</div>';if(r.speak)b+='<button class="bp-btn primary block" onclick="BP.reviewSpeak(\''+r.big+'\')">🎤 Произнести</button>';else if(r.write)b+='<input id="reviewInput" class="bp-input" maxlength="1" style="margin-top:12px"><button class="bp-btn primary block" style="margin-top:10px" onclick="BP.reviewWrite(\''+r.write+'\')">Проверить</button>';else b+=choice(r.opts,r.ok,'BP.reviewChoice');b+='</div>'+lessonNav(s>0?'BP.reviewBack()':'','BP.reviewSkip()','');app(b,'learn')}
 
 const READING_RULES=[
- {key:'j',sound:'«й»',examples:['ja','Jahr'],listen:'ja',newWord:'jetzt'},
- {key:'ei',sound:'примерно «ай»',examples:['nein','drei','heißen'],listen:'drei',newWord:'mein'},
- {key:'ie',sound:'долгое «и»',examples:['vier','sieben','hier'],listen:'sieben',newWord:'Liebe'},
- {key:'sch',sound:'«ш»',examples:['Schule','Schwester'],listen:'Schule',newWord:'Schrank'},
- {key:'ch после i/e',sound:'мягкий [ç]',examples:['ich','mich','nicht'],listen:'ich',newWord:'Milch'},
- {key:'ch после a/o/u/au',sound:'более твёрдый [x]',examples:['acht','auch','Buch'],listen:'Buch',newWord:'machen'},
- {key:'z',sound:'«ц»',examples:['zwei','zehn','Zeit'],listen:'Zeit',newWord:'Zimmer'},
- {key:'w',sound:'«в»',examples:['Wasser','wohnen','wo'],listen:'wohnen',newWord:'wer'},
- {key:'v',sound:'часто «ф»',examples:['Vater','vier','Vogel'],listen:'Vater',newWord:'viel'},
- {key:'sp в начале',sound:'примерно «шп»',examples:['Sport','sprechen'],listen:'Sport',newWord:'spielen'},
- {key:'st в начале',sound:'примерно «шт»',examples:['Stadt','Straße'],listen:'Straße',newWord:'stehen'},
- {key:'eu / äu',sound:'примерно «ой»',examples:['heute','neun','Häuser'],listen:'heute',newWord:'Freund'},
- {key:'ß',sound:'глухой «с»',examples:['heißen','Straße','groß'],listen:'Straße',newWord:'Fuß'},
- {key:'ä / ö / ü',sound:'отдельные немецкие гласные',examples:['Mädchen','schön','fünf'],listen:'fünf',newWord:'Tür'},
- {key:'-e / -er',sound:'ослабленно, но не исчезают',examples:['bitte','Name','Vater'],listen:'Mutter',newWord:'Bruder'}
+ {key:'w',sound:'обычно звучит как русский «в»',examples:['Wasser','wohnen','wo'],listen:'Wasser',newWord:'wo',hint:'Здесь W должна звучать как «в». Послушай ещё раз.'},
+ {key:'ei',sound:'примерно «ай»',examples:['heißen','Preis','nein'],listen:'heißen',newWord:'Preis',hint:'Сочетание ei читается примерно как «ай». Послушай heißen ещё раз.'},
+ {key:'ie',sound:'долгое «и»',examples:['Sie','sieben','vier'],listen:'sieben',newWord:'Sie',hint:'В ie слышим длинный звук «и». Послушай sieben ещё раз.'},
+ {key:'sch',sound:'«ш»',examples:['Schule','Schwester'],listen:'Schule',newWord:'Schwester',hint:'Сочетание sch читается как «ш». Послушай Schule ещё раз.'}
 ];
-function reading(){state.readingRule=0;state.readingPhase=0;go('reading')}
+const READING_RECALL=[
+ {rule:'w',word:'wo',q:'А это помнишь? Прочитай новое короткое слово по уже знакомому правилу.'},
+ {rule:'ei',word:'Preis',q:'А это помнишь? Здесь снова работает ei.'}
+];
+function reading(){state.readingRule=0;state.readingPhase=0;state.readingRecallStep=0;state.feedback='';go('reading')}
 function readingScreen(){
  const r=READING_RULES[state.readingRule], p=state.readingPhase;
- let b=screenHead('Как читаются немецкие слова','слушаем · читаем · пишем','BP.learn()');
+ let b=screenHead('Как читаются немецкие слова','правило сразу работает на словах OTTO A1','BP.learn()');
  if(!r){
-   b+=titleCard('Раздел завершён','Правила чтения пройдены')+'<button class="bp-btn primary block" onclick="BP.finishReading()">Перейти к мини-проверке</button></div>';
+   const recall=READING_RECALL[state.readingRecallStep];
+   if(recall){
+     b+=lessonProgress('Возвращаем старое',state.readingRecallStep,READING_RECALL.length)+
+        titleCard('А это помнишь?',recall.word,recall.q)+
+        '<button class="bp-btn secondary block" onclick="BP.play(\''+recall.word+'\',this)">🔊 Послушать</button>'+
+        '<button class="bp-btn primary block" style="margin-top:10px" onclick="BP.readingRecallSpeak(\''+recall.word+'\')">🎤 Прочитать самому</button></div>'+
+        lessonNav(state.readingRecallStep>0?'BP.readingRecallBack()':'BP.readingBackFromRecall()','BP.readingRecallSkip()','BP.skipReadingSection()');
+     return app(b,'learn');
+   }
+   b+=titleCard('Готово','Четыре правила уже работают','Теперь проверим слух, чтение, произношение и написание на коротком мини-тесте.')+
+      '<button class="bp-btn primary block" onclick="BP.finishReading()">Перейти к мини-проверке</button></div>'+
+      lessonNav('BP.readingRecallBack()','','BP.skipReadingSection()');
    return app(b,'learn');
  }
  b+=lessonProgress('Правило '+(state.readingRule+1)+' из '+READING_RULES.length,p,5);
- if(p===0)b+=titleCard('Правило',r.key+' → '+r.sound)+'<div class="bp-word">'+r.examples.join(' · ')+'</div><div class="bp-audio">'+r.examples.map(x=>'<button class="bp-btn secondary" onclick="BP.play(\''+x+'\',this)">🔊 '+x+'</button>').join('')+'</div><button class="bp-btn primary block" onclick="BP.readingNext()">Потренироваться</button></div>';
- if(p===1)b+=titleCard('На слух','Какое слово произнёс OTTO?')+'<button class="bp-btn secondary block" onclick="BP.play(\''+r.listen+'\',this)">🔊 Слушать</button>'+choice([r.listen,r.newWord,'Wasser'],0,'BP.readingChoice')+'</div>';
- if(p===2)b+=titleCard('Найди правило','Где здесь '+r.key+'?')+'<div class="bp-word">'+r.examples[0]+'</div><button class="bp-btn primary block" onclick="BP.readingNext()">Нашёл(ла) → дальше</button></div>';
- if(p===3)b+=titleCard('Прочитай самостоятельно',r.newWord)+'<div class="bp-word">'+r.newWord+'</div><button class="bp-btn primary block" onclick="BP.readingSpeak(\''+r.newWord+'\')">🎤 Прочитать</button></div>';
- if(p===4)b+=titleCard('Напиши то, что услышал',r.listen)+'<button class="bp-btn secondary block" onclick="BP.play(\''+r.listen+'\',this)">🔊 Слушать ещё раз</button><input id="readingInput" class="bp-input" autocomplete="off" style="margin-top:12px"><button class="bp-btn primary block" style="margin-top:10px" onclick="BP.readingWrite(\''+r.listen+'\')">Проверить</button>'+feedback()+'</div>';
- b+=lessonNav((p>0||state.readingRule>0)?'BP.readingBack()':'','BP.readingSkip()','');
+ if(p===0)b+=titleCard('Правило',r.key+' → '+r.sound)+
+    '<div class="bp-word">'+r.examples.join(' · ')+'</div>'+
+    '<div class="bp-audio">'+r.examples.map(x=>'<button class="bp-btn secondary" onclick="BP.play(\''+x+'\',this)">🔊 '+x+'</button>').join('')+'</div>'+
+    '<button class="bp-btn primary block" onclick="BP.readingNext()">Потренироваться</button></div>';
+ if(p===1)b+=titleCard('На слух','Какое слово произнёс OTTO?')+
+    '<button class="bp-btn secondary block" onclick="BP.play(\''+r.listen+'\',this)">🔊 Слушать</button>'+
+    choice([r.listen,r.newWord,state.readingRule===0?'Schule':'Wasser'],0,'BP.readingChoice')+feedback()+'</div>';
+ if(p===2)b+=titleCard('Найди правило','Где здесь '+r.key+'?')+
+    '<div class="bp-word">'+r.examples[0]+'</div>'+
+    '<button class="bp-btn primary block" onclick="BP.readingNext()">Нашёл(ла) → дальше</button></div>';
+ if(p===3)b+=titleCard('Прочитай самостоятельно',r.newWord)+
+    '<div class="bp-word">'+r.newWord+'</div>'+
+    '<button class="bp-btn primary block" onclick="BP.readingSpeak(\''+r.newWord+'\')">🎤 Прочитать</button></div>';
+ if(p===4)b+=titleCard('Напиши услышанное слово',r.listen)+
+    '<button class="bp-btn secondary block" onclick="BP.play(\''+r.listen+'\',this)">🔊 Слушать ещё раз</button>'+
+    '<input id="readingInput" class="bp-input" autocomplete="off" style="margin-top:12px">'+
+    '<button class="bp-btn primary block" style="margin-top:10px" onclick="BP.readingWriteCurrent()">Проверить</button>'+feedback()+'</div>';
+ b+=lessonNav((p>0||state.readingRule>0)?'BP.readingBack()':'','BP.readingSkip()','BP.skipReadingSection()');
  app(b,'learn')
 }
 const READING_TEST=[
- {type:'choice',q:'Как читается sch?',opts:['примерно «ш»','примерно «ай»','примерно «ц»'],ok:0},
- {type:'audio',q:'Какое слово услышал?',word:'drei',opts:['drei','vier','hier'],ok:0},
- {type:'choice',q:'Как прочитать новое слово mein?',opts:['по правилу ei','по правилу ie','как написано по-русски'],ok:0},
- {type:'speak',q:'Прочитай новое слово',word:'Schrank'},
- {type:'speak',q:'Прочитай новое слово',word:'Zimmer'},
- {type:'audio',q:'Что услышал?',word:'heute',opts:['heute','hier','Haus'],ok:0}
+ {type:'audio',q:'Какое слово услышал?',word:'Wasser',opts:['Wasser','Schule','Sie'],ok:0},
+ {type:'choice',q:'Как читается ei в слове Preis?',opts:['примерно «ай»','долгое «и»','как «ш»'],ok:0},
+ {type:'speak',q:'Прочитай самостоятельно',word:'Schwester'},
+ {type:'write',q:'Напиши услышанное слово',word:'sieben'},
+ {type:'audio',q:'Что услышал?',word:'Sie',opts:['Sie','Preis','wo'],ok:0}
 ];
-function readingTest(){state.readingTestStep=0;go('readingTest')}
+function readingTest(){state.readingTestStep=0;state.readingTestScore=0;state.feedback='';go('readingTest')}
 function readingTestScreen(){
  const s=state.readingTestStep,t=READING_TEST[s];
- let b=screenHead('Уже умеешь читать?','мини-проверка','BP.learn()');
+ let b=screenHead('Уже умеешь читать?','короткая проверка','BP.learn()');
  if(!t){complete('readingTest');state.screen='readingPraise';save();return render()}
  b+=lessonProgress('Мини-тест',s,READING_TEST.length)+titleCard('Задание '+(s+1),t.q);
  if(t.type==='audio')b+='<button class="bp-btn secondary block" onclick="BP.play(\''+t.word+'\',this)">🔊 Слушать</button>'+choice(t.opts,t.ok,'BP.readingTestChoice');
  else if(t.type==='choice')b+=choice(t.opts,t.ok,'BP.readingTestChoice');
+ else if(t.type==='write')b+='<button class="bp-btn secondary block" onclick="BP.play(\''+t.word+'\',this)">🔊 Слушать</button><input id="readingTestInput" class="bp-input" style="margin-top:10px"><button class="bp-btn primary block" style="margin-top:10px" onclick="BP.readingTestWrite(\''+t.word+'\')">Проверить</button>'+feedback();
  else b+='<div class="bp-word">'+t.word+'</div><button class="bp-btn primary block" onclick="BP.readingTestSpeak(\''+t.word+'\')">🎤 Прочитать</button>';
  b+='</div>'+lessonNav(s>0?'BP.readingTestBack()':'','BP.readingTestSkip()','');
  app(b,'learn')
 }
 function readingPraiseScreen(){
  const score=Math.round((Number(state.readingTestScore||0)/Math.max(1,READING_TEST.length))*100);
- app(screenHead('Готово','Первые правила чтения уже работают','BP.learn()')+'<div class="bp-card bp-praise"><img src="/otto/otto-guide.webp" alt="OTTO"><div><h2 class="bp-title">Видишь — ты уже читаешь первые слова по-немецки 😊</h2><p class="bp-lead">То ли ещё будет!</p><div class="bp-progress"><i style="width:'+score+'%"></i></div><small>Мини-проверка · '+score+'%</small><button class="bp-btn primary block" style="margin-top:12px" onclick="BP.pronouns()">Дальше: местоимения</button></div></div>','learn')
+ app(screenHead('Готово','Первые правила чтения уже работают','BP.learn()')+
+ '<div class="bp-card bp-praise"><img src="/otto/otto-guide.webp" alt="OTTO"><div><h2 class="bp-title">Смотри — ты уже можешь читать первые немецкие слова сам(а).</h2><p class="bp-lead">То ли ещё будет 🙂</p><div class="bp-progress"><i style="width:'+score+'%"></i></div><small>Мини-проверка · '+score+'%</small><button class="bp-btn primary block" style="margin-top:12px" onclick="BP.noun()">Дальше: первые существительные</button></div></div>','learn')
 }
-const P_TOTAL=13;
+
+const P_TOTAL=9;
 function pronouns(){state.pronounStep=0;state.feedback='';go('pronouns')}
 function pronounScreen(){
  const s=state.pronounStep;
- let b=screenHead('Личные местоимения','разберём по одному','BP.learn()')+lessonProgress('Местоимения',s,P_TOTAL);
+ let b=screenHead('Личные местоимения','сначала видим всю карту, учим постепенно','BP.learn()')+lessonProgress('Местоимения',s,P_TOTAL);
  const all=[['ich','я'],['du','ты'],['er','он'],['sie','она'],['es','оно'],['wir','мы'],['ihr','вы'],['sie','они'],['Sie','Вы']];
- if(s===0)b+=titleCard('Личные местоимения','Сколько их будет')+'<div class="bp-pronoun-grid">'+all.map(x=>'<div class="bp-pronoun"><b>'+x[0]+'</b><small>'+x[1]+'</small></div>').join('')+'</div><p class="bp-lead" style="margin-top:12px">Не нужно запоминать всё сейчас. Дальше разберём каждое отдельно.</p><button class="bp-btn primary block" style="margin-top:12px" onclick="BP.pronounNext()">Начать с ich</button></div>';
- if(s===1)b+=titleCard('ich','ich — я')+'<div class="bp-word">Ich bin Anna.</div><button class="bp-btn secondary block" onclick="BP.play(\'ich\',this)">🔊 ich</button>'+choice(['я','ты','он'],0,'BP.pronounChoice')+'</div>';
- if(s===2)b+=titleCard('ich','Напиши: «я»')+'<input id="pronounInput" class="bp-input"><button class="bp-btn primary block" style="margin-top:10px" onclick="BP.pronounWrite(\'ich\')">Проверить</button>'+feedback()+'</div>';
- if(s===3)b+=titleCard('du','du — ты')+'<div class="bp-word">Du bist hier.</div><button class="bp-btn secondary block" onclick="BP.play(\'du\',this)">🔊 du</button>'+choice(['мы','ты','она'],1,'BP.pronounChoice')+'</div>';
- if(s===4)b+=titleCard('Смешиваем','Anna → ?')+choice(['er','sie','du'],1,'BP.pronounChoice')+'</div>';
- if(s===5)b+=titleCard('er','er — он')+'<div class="bp-word">Peter → er</div><button class="bp-btn secondary block" onclick="BP.play(\'er\',this)">🔊 er</button>'+choice(['он','она','я'],0,'BP.pronounChoice')+'</div>';
- if(s===6)b+=titleCard('Смешиваем','Peter → ?')+choice(['er','sie','ich'],0,'BP.pronounChoice')+'</div>';
- if(s===7)b+=titleCard('sie','sie — она')+'<div class="bp-word">Anna → sie</div><button class="bp-btn secondary block" onclick="BP.play(\'sie\',this)">🔊 sie</button>'+choice(['она','мы','ты'],0,'BP.pronounChoice')+'</div>';
- if(s===8)b+=titleCard('На слух','Какое местоимение услышал?')+'<button class="bp-btn secondary block" onclick="BP.play(\'ich\',this)">🔊 Слушать</button>'+choice(['ich','du','er'],0,'BP.pronounChoice')+'</div>';
- if(s===9)b+=titleCard('Смешиваем','Какое местоимение в фразе?')+'<button class="bp-btn secondary block" onclick="BP.play(\'Ich bin Anna.\',this)">🔊 Ich bin Anna.</button>'+choice(['ich','du','er'],0,'BP.pronounChoice')+'</div>';
- if(s===10)b+=titleCard('По памяти','Напиши: «ты»')+'<input id="pronounInput" class="bp-input"><button class="bp-btn primary block" style="margin-top:10px" onclick="BP.pronounWrite(\'du\')">Проверить</button>'+feedback()+'</div>';
- if(s===11)b+=titleCard('Говорение','Скажи: ich')+'<button class="bp-btn primary block" onclick="BP.pronounSpeak(\'ich\')">🎤 ich</button></div>';
- if(s===12)b+=titleCard('А это помнишь?','Peter → ?')+choice(['er','sie','wir'],0,'BP.finishPronouns')+'</div>';
- b+=lessonNav(s>0?'BP.pronounBack()':'','BP.pronounSkip()','');app(b,'learn')
+ if(s===0)b+=titleCard('Карта','Основные слова, которые заменяют имя человека')+
+   '<div class="bp-pronoun-grid">'+all.map(x=>'<div class="bp-pronoun"><b>'+x[0]+'</b><small>'+x[1]+'</small></div>').join('')+'</div>'+
+   '<p class="bp-lead" style="margin-top:12px">Не учим таблицу целиком. Начнём с тех, которые сразу понадобятся в OTTO A1.</p>'+
+   '<button class="bp-btn primary block" style="margin-top:12px" onclick="BP.pronounNext()">Начать с ich</button></div>';
+ if(s===1)b+=titleCard('ich','ich — я')+
+   '<button class="bp-btn secondary block" onclick="BP.play(\'ich\',this)">🔊 ich</button>'+
+   choice(['я','ты','Вы'],0,'BP.pronounChoice')+'</div>';
+ if(s===2)b+=titleCard('du','du — ты')+
+   '<button class="bp-btn secondary block" onclick="BP.play(\'du\',this)">🔊 du</button>'+
+   choice(['он','ты','мы'],1,'BP.pronounChoice')+'</div>';
+ if(s===3)b+=titleCard('Sie','Sie — Вы')+
+   '<button class="bp-btn secondary block" onclick="BP.play(\'Sie\',this)">🔊 Sie</button>'+
+   choice(['она','Вы','они'],1,'BP.pronounChoice')+'</div>';
+ if(s===4)b+=titleCard('По памяти','Напиши: «я»')+
+   '<input id="pronounInput" class="bp-input"><button class="bp-btn primary block" style="margin-top:10px" onclick="BP.pronounWrite(\'ich\')">Проверить</button>'+feedback()+'</div>';
+ if(s===5)b+=titleCard('Добавляем ещё два','er — он · sie — она')+
+   '<div class="bp-pronoun-grid"><div class="bp-pronoun"><b>er</b><small>он</small></div><div class="bp-pronoun"><b>sie</b><small>она</small></div></div>'+
+   '<button class="bp-btn primary block" style="margin-top:12px" onclick="BP.pronounNext()">Проверим</button></div>';
+ if(s===6)b+=titleCard('По человеку','Peter → ?')+choice(['er','sie','ich'],0,'BP.pronounChoice')+'</div>';
+ if(s===7)b+=titleCard('По человеку','Anna → ?')+choice(['er','sie','du'],1,'BP.pronounChoice')+'</div>';
+ if(s===8)b+=titleCard('И ещё одно','wir — мы','Остальные местоимения вернутся позже, когда появится реальная необходимость.')+
+   '<button class="bp-btn secondary block" onclick="BP.play(\'wir\',this)">🔊 wir</button>'+
+   '<button class="bp-btn primary block" style="margin-top:10px" onclick="BP.finishPronounsDirect()">Дальше: глаголы</button></div>';
+ b+=lessonNav(s>0?'BP.pronounBack()':'','BP.pronounSkip()','');
+ app(b,'learn')
 }
 
-const V_TOTAL=10;
-function verb(){state.verbStep=0;state.feedback='';go('verb')}
+const V_TOTAL=11;
+function verb(){state.verbStep=0;state.feedback='';state.assembly=[];go('verb')}
 function verbScreen(){
  const s=state.verbStep;
- let b=screenHead('Основные глаголы','сначала слово, потом готовая фраза','BP.learn()')+lessonProgress('Глаголы',s,V_TOTAL);
- if(s===0)b+=titleCard('wohnen','wohnen — жить')+'<div class="bp-word">wohnen</div><button class="bp-btn secondary block" onclick="BP.play(\'wohnen\',this)">🔊 Послушать</button><button class="bp-btn primary block" style="margin-top:10px" onclick="BP.verbNext()">Дальше</button></div>';
- if(s===1)b+=titleCard('Произношение','wohnen')+'<button class="bp-btn primary block" onclick="BP.verbSpeak(\'wohnen\')">🎤 Произнести слово</button></div>';
- if(s===2)b+=titleCard('Смысл','Что значит wohnen?')+choice(['жить','говорить','работать'],0,'BP.verbChoice')+'</div>';
- if(s===3)b+=titleCard('Написание','Напиши: wohnen')+'<input id="verbInput" class="bp-input"><button class="bp-btn primary block" style="margin-top:10px" onclick="BP.verbWrite(\'wohnen\')">Проверить</button>'+feedback()+'</div>';
- if(s===4)b+=titleCard('На слух','Какой глагол услышал?')+'<button class="bp-btn secondary block" onclick="BP.play(\'wohnen\',this)">🔊 Слушать</button>'+choice(['kommen','wohnen','lernen'],1,'BP.verbChoice')+'</div>';
- if(s===5)b+=titleCard('Готовая фраза','Ich wohne in Berlin.')+'<div class="bp-word">Ich wohne in Berlin.</div><p class="bp-lead">Пока просто посмотри на готовую фразу. Скоро разберём, как такие предложения строятся.</p><button class="bp-btn secondary block" onclick="BP.play(\'Ich wohne in Berlin.\',this)">🔊 Послушать</button><button class="bp-btn primary block" style="margin-top:10px" onclick="BP.verbNext()">Дальше</button></div>';
- if(s===6){const t=['in Berlin','wohne','Ich'];b+=titleCard('Собери готовые блоки','Готовая фраза: «Я живу в Берлине»')+'<div class="bp-assembly">'+(state.assembly.length?state.assembly.map(x=>'<span>'+x+'</span>').join(''):'<small>Нажимайте готовые блоки</small>')+'</div><div class="bp-tokens">'+t.map((x,i)=>'<button class="bp-token" onclick="BP.verbToken('+i+')">'+x+'</button>').join('')+'</div><div class="bp-row"><button class="bp-btn secondary" onclick="BP.verbClear()">Очистить</button><button class="bp-btn primary" onclick="BP.verbAssemblyCheck()">Проверить</button></div></div>'}
- if(s===7)b+=titleCard('kommen','kommen — приходить / приезжать')+'<button class="bp-btn secondary block" onclick="BP.play(\'kommen\',this)">🔊 kommen</button>'+choice(['приходить','жить','учить'],0,'BP.verbChoice')+'</div>';
- if(s===8)b+=titleCard('lernen','lernen — учить / изучать')+'<button class="bp-btn secondary block" onclick="BP.play(\'lernen\',this)">🔊 lernen</button>'+choice(['говорить','учить','работать'],1,'BP.verbChoice')+'</div>';
- if(s===9)b+=titleCard('А это помнишь?','wohnen')+choice(['жить','ехать','читать'],0,'BP.finishVerbsChoice')+'</div>';
- b+=lessonNav(s>0?'BP.verbBack()':'','BP.verbSkip()','');app(b,'learn')
+ let b=screenHead('Первые глаголы','значение · звучание · написание · готовый оборот','BP.learn()')+lessonProgress('Глаголы',s,V_TOTAL);
+ if(s===0)b+=titleCard('Первая пятёрка','heißen · kommen · wohnen · sprechen · lernen','Все пять уже используются в OTTO A1.')+
+   '<button class="bp-btn primary block" style="margin-top:12px" onclick="BP.verbNext()">Начать</button></div>';
+ if(s===1)b+=titleCard('heißen','heißen — называться')+
+   '<button class="bp-btn secondary block" onclick="BP.play(\'heißen\',this)">🔊 heißen</button>'+
+   '<div class="bp-note" style="margin-top:10px">Готовый оборот: <b>Ich heiße Anna.</b></div>'+
+   '<button class="bp-btn primary block" style="margin-top:10px" onclick="BP.verbNext()">Дальше</button></div>';
+ if(s===2)b+=titleCard('kommen','kommen — приходить / приезжать')+
+   '<button class="bp-btn secondary block" onclick="BP.play(\'kommen\',this)">🔊 kommen</button>'+
+   '<div class="bp-note" style="margin-top:10px">Готовый оборот: <b>Ich komme aus Russland.</b></div>'+
+   '<button class="bp-btn primary block" style="margin-top:10px" onclick="BP.verbNext()">Дальше</button></div>';
+ if(s===3)b+=titleCard('wohnen','wohnen — жить / проживать')+
+   '<button class="bp-btn secondary block" onclick="BP.play(\'wohnen\',this)">🔊 wohnen</button>'+
+   '<div class="bp-note" style="margin-top:10px">Готовый оборот: <b>Ich wohne in Berlin.</b></div>'+
+   '<button class="bp-btn primary block" style="margin-top:10px" onclick="BP.verbNext()">Дальше</button></div>';
+ if(s===4)b+=titleCard('sprechen','sprechen — говорить')+
+   '<button class="bp-btn secondary block" onclick="BP.play(\'sprechen\',this)">🔊 sprechen</button>'+
+   '<div class="bp-note" style="margin-top:10px">Готовый оборот: <b>Ich spreche Deutsch.</b></div>'+
+   '<button class="bp-btn primary block" style="margin-top:10px" onclick="BP.verbNext()">Дальше</button></div>';
+ if(s===5)b+=titleCard('lernen','lernen — учить / изучать')+
+   '<button class="bp-btn secondary block" onclick="BP.play(\'lernen\',this)">🔊 lernen</button>'+
+   '<div class="bp-note" style="margin-top:10px">Готовый оборот: <b>Ich lerne Deutsch.</b></div>'+
+   '<button class="bp-btn primary block" style="margin-top:10px" onclick="BP.verbNext()">Дальше</button></div>';
+ if(s===6)b+=titleCard('На слух','Какой глагол услышал?')+
+   '<button class="bp-btn secondary block" onclick="BP.play(\'wohnen\',this)">🔊 Слушать</button>'+
+   choice(['kommen','wohnen','sprechen'],1,'BP.verbChoice')+'</div>';
+ if(s===7)b+=titleCard('Написание','Напиши: wohnen')+
+   '<input id="verbInput" class="bp-input"><button class="bp-btn primary block" style="margin-top:10px" onclick="BP.verbWrite(\'wohnen\')">Проверить</button>'+feedback()+'</div>';
+ if(s===8)b+=titleCard('Произношение','heißen')+
+   '<button class="bp-btn secondary block" onclick="BP.play(\'heißen\',this)">🔊 Послушать</button>'+
+   '<button class="bp-btn primary block" style="margin-top:10px" onclick="BP.verbSpeak(\'heißen\')">🎤 Произнести</button></div>';
+ if(s===9)b+=titleCard('Смешиваем','Какой готовый оборот уже знаком?')+
+   choice(['Ich wohne in Berlin.','Wo wohnen Sie?','Wann beginnt der Kurs?'],0,'BP.verbChoice')+'</div>';
+ if(s===10)b+=titleCard('Готово','Теперь можно показать, как из знакомых блоков получается первое предложение','Новой лексики сейчас не добавляем.')+
+   '<button class="bp-btn primary block" style="margin-top:12px" onclick="BP.finishVerbsDirect()">Собрать первое предложение</button></div>';
+ b+=lessonNav(s>0?'BP.verbBack()':'','BP.verbSkip()','');
+ app(b,'learn')
 }
 
-const N_TOTAL=11;
+const N_TOTAL=9;
 function noun(){state.nounStep=0;state.feedback='';go('noun')}
-function nounScreen(){const s=state.nounStep;let b=screenHead('Существительные','несколько слов · разные механики','BP.learn()')+lessonProgress('Существительные',s,N_TOTAL);
-  if(s===0)b+=titleCard('Новое','das Haus — дом','Сразу запоминаем вместе с артиклем.')+'<button class="bp-btn secondary block" onclick="BP.play(\'das Haus\',this)">🔊 das Haus</button><div class="bp-note" style="margin-top:10px">Ich wohne in einem Haus.</div><button class="bp-btn primary block" style="margin-top:10px" onclick="BP.nounNext()">Дальше</button></div>';
-  if(s===1)b+=titleCard('Новое на слух','der Bus')+'<button class="bp-btn secondary block" onclick="BP.play(\'der Bus\',this)">🔊 Слушать</button>'+choice(['автобус','вокзал','отель'],0,'BP.nounChoice')+'</div>';
-  if(s===2)b+=titleCard('Новое','die Schule — школа')+'<div class="bp-word">die Schule</div>'+choice(['сюда идут учиться','сюда приезжает поезд','здесь ночует турист'],0,'BP.nounChoice')+'</div>';
-  if(s===3)b+=titleCard('Новое на слух','der Bahnhof')+'<button class="bp-btn secondary block" onclick="BP.play(\'der Bahnhof\',this)">🔊 Слушать</button>'+choice(['вокзал','дом','школа'],0,'BP.nounChoice')+'</div>';
-  if(s===4)b+=titleCard('Возвращаем старое','Напиши: «дом»','Можно с артиклем или без него.')+'<input id="nounInput" class="bp-input" autocomplete="off"><button class="bp-btn primary block" style="margin-top:10px" onclick="BP.nounWrite(\'Haus\')">Проверить</button>'+feedback()+'</div>';
-  if(s===5)b+=titleCard('Новое по ситуации','Где обычно ночует турист?')+choice(['das Hotel','der Bus','die Schule'],0,'BP.nounChoice')+'</div>';
-  if(s===6)b+=titleCard('Найди лишнее','Что не относится к поездке по городу?')+choice(['der Bus','der Bahnhof','das Haus'],2,'BP.nounChoice')+'</div>';
-  if(s===7)b+=titleCard('Слушаем предложение','Какое знакомое существительное услышал?')+'<button class="bp-btn secondary block" onclick="BP.play(\'Ich fahre mit dem Bus.\',this)">🔊 Слушать</button>'+choice(['der Bus','das Hotel','die Schule'],0,'BP.nounChoice')+'</div>';
-  if(s===8)b+=titleCard('Говорение','Назови слово с артиклем: «отель»')+'<button class="bp-btn primary block" onclick="BP.nounSpeak(\'das Hotel\')">🎤 das Hotel</button></div>';
-  if(s===9)b+=titleCard('А это помнишь?','Wir wohnen im Hotel.','Что значит wir?')+choice(['мы','они','Вы'],0,'BP.nounChoice')+'</div>';
-  if(s===10)b+=titleCard('Урок завершён','5 существительных в разных контекстах','das Haus · der Bus · die Schule · der Bahnhof · das Hotel')+'<button class="bp-btn primary block" style="margin-top:12px" onclick="BP.finishNouns()">Завершить</button></div>';
-  b+=lessonNav(s>0?'BP.nounBack()':'','BP.nounSkip()','');app(b,'learn')}
+function nounScreen(){
+ const s=state.nounStep;
+ let b=screenHead('Первые существительные','слово сразу вместе с артиклем','BP.learn()')+lessonProgress('Существительные',s,N_TOTAL);
+ if(s===0)b+=titleCard('Первая группа','Люди и семья','Сегодня только 5 слов: die Familie · der Mann · die Frau · das Kind · der Freund.')+
+   '<button class="bp-btn primary block" style="margin-top:12px" onclick="BP.nounNext()">Начать</button></div>';
+ if(s===1)b+=titleCard('Новое слово','die Familie — семья')+
+   '<div class="bp-word">die Familie</div><button class="bp-btn secondary block" onclick="BP.play(\'die Familie\',this)">🔊 die Familie</button>'+
+   '<button class="bp-btn primary block" style="margin-top:10px" onclick="BP.nounNext()">Дальше</button></div>';
+ if(s===2)b+=titleCard('На слух','Что означает der Mann?')+
+   '<button class="bp-btn secondary block" onclick="BP.play(\'der Mann\',this)">🔊 der Mann</button>'+
+   choice(['мужчина / муж','ребёнок','друг'],0,'BP.nounChoice')+'</div>';
+ if(s===3)b+=titleCard('Из русского в немецкий','Как будет «женщина / жена»?')+
+   choice(['die Frau','der Mann','das Kind'],0,'BP.nounChoice')+'</div>';
+ if(s===4)b+=titleCard('Написание','Напиши слово «ребёнок»')+
+   '<p class="bp-lead">Артикль уже показан: <b>das …</b></p><input id="nounInput" class="bp-input" autocomplete="off">'+
+   '<button class="bp-btn primary block" style="margin-top:10px" onclick="BP.nounWrite(\'Kind\')">Проверить</button>'+feedback()+'</div>';
+ if(s===5)b+=titleCard('Произношение','der Freund — друг')+
+   '<button class="bp-btn secondary block" onclick="BP.play(\'der Freund\',this)">🔊 Послушать</button>'+
+   '<button class="bp-btn primary block" style="margin-top:10px" onclick="BP.nounSpeak(\'der Freund\')">🎤 Произнести</button></div>';
+ if(s===6)b+=titleCard('Смешиваем','Какое слово услышал?')+
+   '<button class="bp-btn secondary block" onclick="BP.play(\'die Familie\',this)">🔊 Слушать</button>'+
+   choice(['die Familie','die Frau','der Freund'],0,'BP.nounChoice')+'</div>';
+ if(s===7)b+=titleCard('А это помнишь?','Как будет «семья»?')+
+   choice(['die Familie','das Kind','der Mann'],0,'BP.nounChoice')+'</div>';
+ if(s===8)b+=titleCard('Готово','Первые 5 существительных уже знакомы','Слова вернутся позже в других заданиях, а не теми же карточками.')+
+   '<button class="bp-btn primary block" style="margin-top:12px" onclick="BP.finishNouns()">Дальше: местоимения</button></div>';
+ b+=lessonNav(s>0?'BP.nounBack()':'','BP.nounSkip()','');
+ app(b,'learn')
+}
 
 function numberWord(n){n=Number(n);if(!Number.isInteger(n)||n<0||n>9999)return'';const ones=['null','eins','zwei','drei','vier','fünf','sechs','sieben','acht','neun','zehn','elf','zwölf','dreizehn','vierzehn','fünfzehn','sechzehn','siebzehn','achtzehn','neunzehn'];const tens=['','','zwanzig','dreißig','vierzig','fünfzig','sechzig','siebzig','achtzig','neunzig'];const u100=x=>x<20?ones[x]:(x%10?(x%10===1?'ein':ones[x%10])+'und'+tens[Math.floor(x/10)]:tens[Math.floor(x/10)]);const u1000=x=>x<100?u100(x):(Math.floor(x/100)===1?'einhundert':ones[Math.floor(x/100)]+'hundert')+(x%100?u100(x%100):'');if(n<1000)return u1000(n);return (Math.floor(n/1000)===1?'eintausend':u1000(Math.floor(n/1000))+'tausend')+(n%1000?u1000(n%1000):'')}
 function numbers(){go('numbers')}
 function numberScreen(){app(screenHead('Числа','контекст + произношение','BP.learn()')+'<div class="bp-grid2"><div class="bp-card"><div class="bp-kicker">Принцип</div><h2 class="bp-title">21 = ein + und + zwanzig</h2><div class="bp-mini-list"><div class="bp-mini"><span class="n">35</span><div><b>Ich bin 35 Jahre alt.</b><small>возраст</small></div></div><div class="bp-mini"><span class="n">17€</span><div><b>Das kostet 17 Euro.</b><small>цена</small></div></div><div class="bp-mini"><span class="n">12</span><div><b>Gartenstraße 12</b><small>номер дома</small></div></div></div></div><div class="bp-number-box"><div class="bp-kicker">Как произнести число?</div><input id="numberInput" class="bp-input" inputmode="numeric" value="127" style="margin-top:12px"><button class="bp-btn secondary block" style="margin-top:9px" onclick="BP.makeNumber()">Показать</button><div id="numberResult" class="bp-number-result">einhundertsiebenundzwanzig</div><div class="bp-row"><button class="bp-btn secondary" onclick="BP.listenNumber(this)">🔊 Послушать</button><button class="bp-btn primary" onclick="BP.repeatNumber()">🎤 Повторить</button></div></div></div><button class="bp-btn primary block" style="margin-top:12px" onclick="BP.finishNumbers()">Завершить пример</button>'+lessonNav('','BP.learn()',''),'learn')}
 
-const S_TOTAL=7;
+const S_TOTAL=4;
 function sentence(){state.sentenceStep=0;state.feedback='';state.assembly=[];go('sentence')}
-function sentenceScreen(){const s=state.sentenceStep;let b=screenHead('Как строится предложение','сборка · письмо · речь','BP.learn()')+lessonProgress('Предложение',s,S_TOTAL);
-  if(s===0)b+=titleCard('Русский смысл','Я живу в Берлине.')+'<div class="bp-structure"><div><b>КТО</b><span>Я</span></div><div><b>ДЕЙСТВИЕ</b><span>живу</span></div><div><b>ГДЕ</b><span>в Берлине</span></div></div><button class="bp-btn primary block" style="margin-top:14px" onclick="BP.sentenceNext()">Теперь по-немецки</button></div>';
-  if(s===1)b+=titleCard('Немецкие блоки','Ich | wohne | in Berlin.')+'<div class="bp-structure"><div><b>КТО</b><span>Ich</span></div><div><b>ДЕЙСТВИЕ</b><span>wohne</span></div><div><b>ГДЕ</b><span>in Berlin</span></div></div><button class="bp-btn primary block" style="margin-top:14px" onclick="BP.sentenceNext()">Собрать самому</button></div>';
-  if(s===2){const t=['in Berlin','wohne','Ich'];b+=titleCard('Собери предложение','Я живу в Берлине')+'<div class="bp-assembly">'+(state.assembly.length?state.assembly.map(x=>'<span>'+x+'</span>').join(''):'<small>Нажимайте блоки</small>')+'</div><div class="bp-tokens">'+t.map((x,i)=>'<button class="bp-token" onclick="BP.sentenceToken('+i+')">'+x+'</button>').join('')+'</div><div class="bp-row"><button class="bp-btn secondary" onclick="BP.sentenceClear()">Очистить</button><button class="bp-btn primary" onclick="BP.sentenceCheck()">Проверить</button></div></div>'}
-  if(s===3)b+=titleCard('Теперь без блоков','Напиши: «Я живу в Берлине.»')+'<input id="sentenceInput" class="bp-input" autocomplete="off"><button class="bp-btn primary block" style="margin-top:10px" onclick="BP.sentenceWrite()">Проверить</button>'+feedback()+'</div>';
-  if(s===4)b+=titleCard('Говорение','Скажи: «Я живу в Берлине.»')+'<button class="bp-btn secondary block" onclick="BP.play(\'Ich wohne in Berlin.\',this)">🔊 Послушать</button><button class="bp-btn primary block" style="margin-top:10px" onclick="BP.sentenceSpeak()">🎤 Сказать</button></div>';
-  if(s===5)b+=titleCard('Замечаем правило','Heute arbeite ich.')+'<div class="bp-word" style="font-size:24px">Ich arbeite heute.</div><div class="bp-word" style="font-size:24px">Heute arbeite ich.</div><div class="bp-note"><b>Посмотри:</b> Heute стало первым, но глагол arbeite остался на втором месте.</div><button class="bp-btn primary block" style="margin-top:10px" onclick="BP.sentenceNext()">Дальше</button></div>';
-  if(s===6)b+=titleCard('А это помнишь?','Peter → ?','Старое местоимение возвращается уже после темы предложения.')+choice(['er','sie','wir'],0,'BP.finishSentenceChoice')+'</div>';
-  b+=lessonNav(s>0?'BP.sentenceBack()':'','BP.sentenceSkip()','');app(b,'learn')}
+function sentenceScreen(){
+ const s=state.sentenceStep;
+ let b=screenHead('Первое предложение','новое правило — знакомые слова','BP.learn()')+lessonProgress('Предложение',s,S_TOTAL);
+ if(s===0)b+=titleCard('Принцип','КТО + ЧТО ДЕЛАЕТ + ОСТАЛЬНОЕ')+
+   '<div class="bp-structure"><div><b>КТО</b><span>Ich</span></div><div><b>ДЕЙСТВИЕ</b><span>wohne</span></div><div><b>ОСТАЛЬНОЕ</b><span>in Berlin</span></div></div>'+
+   '<button class="bp-btn primary block" style="margin-top:12px" onclick="BP.sentenceNext()">Собрать</button></div>';
+ if(s===1){const t=['in Berlin','wohne','Ich'];b+=titleCard('Конструктор','Ich wohne in Berlin.')+
+   '<div class="bp-assembly">'+(state.assembly.length?state.assembly.map(x=>'<span>'+x+'</span>').join(''):'<small>Нажимайте знакомые блоки</small>')+'</div>'+
+   '<div class="bp-tokens">'+t.map((x,i)=>'<button class="bp-token" onclick="BP.sentenceToken('+i+')">'+x+'</button>').join('')+'</div>'+
+   '<div class="bp-row"><button class="bp-btn secondary" onclick="BP.sentenceClear()">Очистить</button><button class="bp-btn primary" onclick="BP.sentenceCheck()">Проверить</button></div></div>'}
+ if(s===2)b+=titleCard('Ещё один знакомый пример','Ich spreche Deutsch.')+
+   '<div class="bp-structure"><div><b>КТО</b><span>Ich</span></div><div><b>ДЕЙСТВИЕ</b><span>spreche</span></div><div><b>ОСТАЛЬНОЕ</b><span>Deutsch</span></div></div>'+
+   '<button class="bp-btn secondary block" onclick="BP.play(\'Ich spreche Deutsch.\',this)">🔊 Послушать</button>'+
+   '<button class="bp-btn primary block" style="margin-top:10px" onclick="BP.sentenceNext()">Дальше</button></div>';
+ if(s===3)b+=titleCard('Готово','Теперь знакомая фраза стала понятной конструкцией','Следующим шагом превратим знакомое утверждение в вопрос.')+
+   '<button class="bp-btn primary block" style="margin-top:12px" onclick="BP.finishSentenceDirect()">Дальше: Wo?</button></div>';
+ b+=lessonNav(s>0?'BP.sentenceBack()':'','BP.sentenceSkip()','');
+ app(b,'learn')
+}
+
+const Q_TOTAL=3;
+function question(){state.questionStep=0;state.feedback='';go('question')}
+function questionScreen(){
+ const s=state.questionStep;
+ let b=screenHead('Первое вопросительное слово','Wo? — где?','BP.learn()')+lessonProgress('Wo?',s,Q_TOTAL);
+ if(s===0)b+=titleCard('Новое слово','Wo? — где?')+
+   '<button class="bp-btn secondary block" onclick="BP.play(\'Wo?\',this)">🔊 Wo?</button>'+
+   choice(['где?','когда?','как?'],0,'BP.questionChoice')+'</div>';
+ if(s===1)b+=titleCard('Знакомая фраза становится вопросом','Ich wohne in Berlin. → Wo wohnen Sie?')+
+   '<div class="bp-word" style="font-size:23px">Wo wohnen Sie?</div>'+
+   '<button class="bp-btn secondary block" onclick="BP.play(\'Wo wohnen Sie?\',this)">🔊 Wo wohnen Sie?</button>'+
+   '<p class="bp-lead" style="margin-top:10px">Сейчас достаточно увидеть смысл: <b>Wo?</b> спрашивает о месте.</p>'+
+   '<button class="bp-btn primary block" style="margin-top:10px" onclick="BP.questionNext()">Дальше</button></div>';
+ if(s===2)b+=titleCard('Проверим','Какое слово нужно, чтобы спросить «где?»?')+
+   choice(['Wie?','Wo?','Wann?'],1,'BP.finishQuestionChoice')+'</div>';
+ b+=lessonNav(s>0?'BP.questionBack()':'','BP.questionSkip()','');
+ app(b,'learn')
+}
+
+const PREP_TOTAL=3;
+function preposition(){state.prepositionStep=0;state.feedback='';go('preposition')}
+function prepositionScreen(){
+ const s=state.prepositionStep;
+ let b=screenHead('Первая готовая связка','не теория падежей, а рабочий смысл','BP.learn()')+lessonProgress('aus …',s,PREP_TOTAL);
+ if(s===0)b+=titleCard('Готовая связка','aus Russland — из России')+
+   '<button class="bp-btn secondary block" onclick="BP.play(\'aus Russland\',this)">🔊 aus Russland</button>'+
+   '<div class="bp-note" style="margin-top:10px">В OTTO A1 она уже встречается в фразе: <b>Ich komme aus Russland.</b></div>'+
+   '<button class="bp-btn primary block" style="margin-top:10px" onclick="BP.prepositionNext()">Дальше</button></div>';
+ if(s===1)b+=titleCard('Смысл','Что здесь означает aus?')+
+   choice(['из','в','с'],0,'BP.prepositionChoice')+'</div>';
+ if(s===2)b+=titleCard('Готовая фраза','Ich komme aus Russland.')+
+   '<button class="bp-btn secondary block" onclick="BP.play(\'Ich komme aus Russland.\',this)">🔊 Послушать</button>'+
+   '<button class="bp-btn primary block" style="margin-top:10px" onclick="BP.finishPrepositionDirect()">Дальше: und</button></div>';
+ b+=lessonNav(s>0?'BP.prepositionBack()':'','BP.prepositionSkip()','');
+ app(b,'learn')
+}
+
+const CONJ_TOTAL=3;
+function conjunction(){state.conjunctionStep=0;state.feedback='';go('conjunction')}
+function conjunctionScreen(){
+ const s=state.conjunctionStep;
+ let b=screenHead('Первая связка','und — и','BP.learn()')+lessonProgress('und',s,CONJ_TOTAL);
+ if(s===0)b+=titleCard('Новое слово','und — и')+
+   '<button class="bp-btn secondary block" onclick="BP.play(\'und\',this)">🔊 und</button>'+
+   choice(['и','или','но'],0,'BP.conjunctionChoice')+'</div>';
+ if(s===1)b+=titleCard('Соединяем уже знакомое','Ich komme aus Russland und wohne in Berlin.')+
+   '<div class="bp-word" style="font-size:22px">Ich komme aus Russland und wohne in Berlin.</div>'+
+   '<button class="bp-btn secondary block" onclick="BP.play(\'Ich komme aus Russland und wohne in Berlin.\',this)">🔊 Послушать</button>'+
+   '<p class="bp-lead" style="margin-top:10px">Новая только связка <b>und</b>. Остальные части уже встречались раньше.</p>'+
+   '<button class="bp-btn primary block" style="margin-top:10px" onclick="BP.conjunctionNext()">Дальше</button></div>';
+ if(s===2)b+=titleCard('На этом Preview останавливаемся','Методика показана до первой связанной фразы','Дальше базовый курс пока не разворачиваем — сначала утверждаем этот путь.')+
+   '<button class="bp-btn primary block" style="margin-top:12px" onclick="BP.finishConjunctionDirect()">Вернуться к темам</button></div>';
+ b+=lessonNav(s>0?'BP.conjunctionBack()':'','BP.conjunctionSkip()','');
+ app(b,'learn')
+}
+
 
 function errorsScreen(){app(screenHead('Мои ошибки','Повторим то, что пока даётся сложнее','BP.home()')+'<div class="bp-error-list">'+(state.errors.length?state.errors.map((e,i)=>'<div class="bp-error"><div><b>'+esc(e.item)+'</b><small>'+esc(e.detail)+'</small></div><button class="bp-btn secondary small" onclick="BP.trainError('+i+')">Потренировать</button></div>').join(''):'<div class="bp-card"><b>Ошибок пока нет.</b></div>')+'</div>','errors')}
 function settingsScreen(){
@@ -300,7 +484,7 @@ function settingsScreen(){
 }
 function examScreen(){app(screenHead('Проверим, что ты уже умеешь','финальная проверка','BP.learn()')+'<div class="bp-card"><div class="bp-kicker">Финальный этап</div><div class="bp-score">20–25 <small>заданий</small></div><p>0–100 баллов. Учитываются тест, история ошибок, вспоминание, произношение, написание и чтение.</p></div><div class="bp-exam-grid" style="margin-top:12px">'+['буквы и чтение','произношение','написание','слова','местоимения','глаголы','существительные','числа','предлоги и союзы','простые конструкции','порядок слов','голосовые задания'].map((x,i)=>'<div class="bp-card"><b>'+(i+1)+'. '+x+'</b></div>').join('')+'</div><div class="bp-note good" style="margin-top:12px"><b>70/100 и выше:</b> Ты готов(а) перейти дальше.</div><div class="bp-note warn"><b>Ниже 70:</b> показать слабые места, но не блокировать.</div><button class="bp-level disabled" style="margin-top:12px" onclick="BP.soonA1()"><span class="ico">🎯</span><b>Подготовка к A1</b><p>Следующий этап.</p><span class="cta">Скоро</span></button>','learn')}
 
-function render(){if(state.screen==='register')return register();if(state.screen==='level')return level();if(state.screen==='diagnostic')return diagnostic();if(state.screen==='home')return home();if(state.screen==='learn')return learn();if(state.screen==='alphabet')return renderAlpha();if(state.screen==='reading')return readingScreen();if(state.screen==='readingTest')return readingTestScreen();if(state.screen==='readingPraise')return readingPraiseScreen();if(state.screen==='nextSession')return nextSessionScreen();if(state.screen==='pronouns')return pronounScreen();if(state.screen==='verb')return verbScreen();if(state.screen==='noun')return nounScreen();if(state.screen==='numbers')return numberScreen();if(state.screen==='sentence')return sentenceScreen();if(state.screen==='errors')return errorsScreen();if(state.screen==='settings')return settingsScreen();if(state.screen==='exam')return examScreen();home()}
+function render(){if(state.screen==='register')return register();if(state.screen==='level')return level();if(state.screen==='diagnostic')return diagnostic();if(state.screen==='home')return home();if(state.screen==='learn')return learn();if(state.screen==='alphabet')return renderAlpha();if(state.screen==='reading')return readingScreen();if(state.screen==='readingTest')return readingTestScreen();if(state.screen==='readingPraise')return readingPraiseScreen();if(state.screen==='nextSession')return nextSessionScreen();if(state.screen==='noun')return nounScreen();if(state.screen==='pronouns')return pronounScreen();if(state.screen==='verb')return verbScreen();if(state.screen==='sentence')return sentenceScreen();if(state.screen==='question')return questionScreen();if(state.screen==='preposition')return prepositionScreen();if(state.screen==='conjunction')return conjunctionScreen();if(state.screen==='numbers')return numberScreen();if(state.screen==='errors')return errorsScreen();if(state.screen==='settings')return settingsScreen();if(state.screen==='exam')return examScreen();home()}
 
 window.__OTTO_BASE_PREVIEW_SET_STATE=(patch)=>{Object.assign(state,patch||{});save();render();return clone(state)};
 
@@ -316,15 +500,77 @@ window.BP={
   startZero(){state.level='zero';go('home')},startDiagnostic(){state.diagIndex=0;state.diagScore=0;go('diagnostic')},
   soonA1(){root.insertAdjacentHTML('beforeend','<div class="bp-modal-backdrop"><div class="bp-modal"><span class="bp-badge">Скоро</span><h3 style="margin-top:12px">Подготовка к A1</h3><p class="bp-lead">Сейчас делаем только базовый этап.</p><button class="bp-btn primary block" style="margin-top:14px" onclick="this.closest(&quot;.bp-modal-backdrop&quot;).remove()">Понятно</button></div></div>')},
   diagAnswer(ok,b){b.classList.add(ok?'correct':'wrong');if(ok)state.diagScore++;setTimeout(()=>{state.diagIndex++;save();render()},360)},diagSpeak(){pronounce('Wasser');state.diagScore++;setTimeout(()=>{state.diagIndex++;save();render()},180)},diagSkip(){state.diagIndex++;save();render()},continueBase(){go('home')},repeatAlphabet(){go('alphabet')},
-  alphabet,alphaNext(){advance('alphaStep',ALPHA_TOTAL)},alphaBack(){back('alphaStep')},alphaSkipTask(){advance('alphaStep',ALPHA_TOTAL)},alphaChoice(ok,b){markChoice(ok,b,'alphaStep',ALPHA_TOTAL,ok?'':'alpha-'+state.alphaStep,'буква','Буква не вспомнилась; вернуть позже.')},skipAlphabet(){complete('alphabet');setTimeout(()=>BP.reading(),250)},finishAlphabet(){complete('alphabet');BP.reading()},
-  reading(){state.readingRule=0;state.readingPhase=0;go('reading')},readingNext(){state.readingPhase++;if(state.readingPhase>4){state.readingPhase=0;state.readingRule++}save();render()},readingBack(){if(state.readingPhase>0)state.readingPhase--;else if(state.readingRule>0){state.readingRule--;state.readingPhase=4}save();render()},readingSkip(){BP.readingNext()},readingChoice(ok,b){b.classList.add(ok?'correct':'wrong');if(!ok)addError('reading-'+state.readingRule,READING_RULES[state.readingRule]?.key||'правило','чтение','Правило не узнано сразу.');setTimeout(()=>BP.readingNext(),ok?300:650)},readingSpeak(word){pronounce(word);setTimeout(()=>BP.readingNext(),180)},readingWrite(word){checkWrite('readingInput',word,'readingPhase',5,'reading-write-'+state.readingRule,word);setTimeout(()=>{if(state.readingPhase===4)BP.readingNext()},700)},finishReading(){complete('reading');BP.readingTest()},
-  readingTest(){if(state.completed.includes('readingTest')){state.readingTestStep=0;state.readingTestScore=0}go('readingTest')},readingTestChoice(ok,b){b.classList.add(ok?'correct':'wrong');if(ok)state.readingTestScore=(state.readingTestScore||0)+1;else addError('reading-test-'+state.readingTestStep,'чтение','мини-тест','Вернуть позже.');setTimeout(()=>{state.readingTestStep++;save();render()},ok?300:600)},readingTestSpeak(word){pronounce(word);state.readingTestScore=(state.readingTestScore||0)+1;setTimeout(()=>{state.readingTestStep++;save();render()},180)},readingTestBack(){state.readingTestStep=Math.max(0,state.readingTestStep-1);save();render()},readingTestSkip(){state.readingTestStep++;save();render()},
+  alphabet,
+  alphaNext(){advance('alphaStep',ALPHA_TOTAL)},
+  alphaBack(){back('alphaStep')},
+  alphaSkipTask(){advance('alphaStep',ALPHA_TOTAL)},
+  alphaChoice(ok,b){
+    b.classList.add(ok?'correct':'wrong');
+    if(ok){state.feedback='';setTimeout(()=>advance('alphaStep',ALPHA_TOTAL),320)}
+    else{addError('alpha-tricky-w','W','буква','Название W пока путается.');setFeedback('<b>Что произошло</b> Буква пока не узналась.<br><b>Как правильно</b> Это W. Послушай ещё раз.<br><b>Попробуй ещё раз</b>');save();setTimeout(render,450)}
+  },
+  saveFirstName(){const v=personalValue(document.getElementById('firstNameInput')?.value||'');state.firstName=v||'Julia';advance('alphaStep',ALPHA_TOTAL)},
+  saveLastName(){const v=personalValue(document.getElementById('lastNameInput')?.value||'');state.lastName=v||'Petrova';advance('alphaStep',ALPHA_TOTAL)},
+  spellName(text){pronounce(text)},
+  skipAlphabet(){complete('alphabet');BP.reading()},
+  finishAlphabet(){complete('alphabet');BP.reading()},
+
+  reading(){state.readingRule=0;state.readingPhase=0;state.readingRecallStep=0;state.feedback='';go('reading')},
+  readingNext(){state.feedback='';state.readingPhase++;if(state.readingPhase>4){state.readingPhase=0;state.readingRule++}save();render()},
+  readingBack(){state.feedback='';if(state.readingPhase>0)state.readingPhase--;else if(state.readingRule>0){state.readingRule--;state.readingPhase=4}save();render()},
+  readingSkip(){BP.readingNext()},
+  readingChoice(ok,b){
+    const r=READING_RULES[state.readingRule];
+    b.classList.add(ok?'correct':'wrong');
+    if(ok){state.feedback='';setTimeout(()=>BP.readingNext(),320)}
+    else{
+      addError('reading-'+state.readingRule,r.key,'чтение',r.hint);
+      setFeedback('<b>Что произошло</b> Правило пока не сработало.<br><b>Как правильно</b> '+esc(r.hint)+'<br><b>Попробуй ещё раз</b>');
+      save();setTimeout(render,500)
+    }
+  },
+  readingSpeak(word){pronounce(word);setTimeout(()=>BP.readingNext(),180)},
+  readingWriteCurrent(){
+    const r=READING_RULES[state.readingRule];
+    const v=norm(document.getElementById('readingInput')?.value||'');
+    if(v===norm(r.listen)){state.feedback='';BP.readingNext()}
+    else{
+      addError('reading-write-'+state.readingRule,r.listen,'написание','Слово не получилось написать на слух.');
+      setFeedback('<b>Что произошло</b> Написание пока неточное.<br><b>Как правильно</b> '+esc(r.listen)+'.<br><b>Что дальше</b> Это правило вернётся позже на другом слове.');
+      state.readingPhase=0;state.readingRule++;save();setTimeout(render,950)
+    }
+  },
+  readingRecallSpeak(word){pronounce(word);state.readingRecallStep++;save();setTimeout(render,180)},
+  readingRecallSkip(){state.readingRecallStep++;save();render()},
+  readingRecallBack(){state.readingRecallStep=Math.max(0,state.readingRecallStep-1);save();render()},
+  readingBackFromRecall(){state.readingRule=READING_RULES.length-1;state.readingPhase=4;save();render()},
+  skipReadingSection(){complete('reading');BP.readingTest()},
+  finishReading(){complete('reading');BP.readingTest()},
+
+  readingTest(){state.readingTestStep=0;state.readingTestScore=0;state.feedback='';go('readingTest')},
+  readingTestChoice(ok,b){b.classList.add(ok?'correct':'wrong');if(ok)state.readingTestScore++;else addError('reading-test-'+state.readingTestStep,'чтение','мини-тест','Вернуть позже другим заданием.');setTimeout(()=>{state.readingTestStep++;save();render()},ok?300:600)},
+  readingTestSpeak(word){pronounce(word);state.readingTestScore++;setTimeout(()=>{state.readingTestStep++;save();render()},180)},
+  readingTestWrite(word){const v=norm(document.getElementById('readingTestInput')?.value||'');if(v===norm(word)){state.readingTestScore++;state.feedback=''}else{addError('reading-test-write',word,'написание','Слово не вспомнилось на слух.');setFeedback('<b>Что произошло</b> Написание пока неточное.<br><b>Как правильно</b> '+esc(word)+'.')}setTimeout(()=>{state.readingTestStep++;save();render()},650)},
+  readingTestBack(){state.readingTestStep=Math.max(0,state.readingTestStep-1);save();render()},
+  readingTestSkip(){state.readingTestStep++;save();render()},
+
   nextSession,reviewChoice(ok,b){markChoice(ok,b,'reviewStep',REVIEWS.length,'review-'+state.reviewStep,'старый материал','Ошибка на повторении; вернуть позже.')},reviewSpeak(text){pronounce(text);setTimeout(()=>advance('reviewStep',REVIEWS.length),180)},reviewWrite(target){const v=norm(document.getElementById('reviewInput')?.value||'');if(v===norm(target)){state.reviewStep++;save();render()}else{addError('review-write','W / Wasser','написание','Первая буква не вспомнилась.');state.reviewStep++;save();render()}},reviewBack(){back('reviewStep')},reviewSkip(){state.reviewStep++;save();render()},
-  pronouns,pronounNext(){advance('pronounStep',P_TOTAL)},pronounBack(){back('pronounStep')},pronounSkip(){advance('pronounStep',P_TOTAL)},pronounChoice(ok,b){markChoice(ok,b,'pronounStep',P_TOTAL,'pronoun-'+state.pronounStep,'местоимение','Местоимение не вспомнилось; вернуть в следующем уроке.')},pronounWrite(target){checkWrite('pronounInput',target,'pronounStep',P_TOTAL,'pronoun-write-'+target,target)},pronounSpeak(text){pronounce(text);setTimeout(()=>advance('pronounStep',P_TOTAL),180)},finishPronouns(ok,b){b.classList.add(ok?'correct':'wrong');if(!ok)addError('alpha-return-w','W / Wasser','повторение','Старая буква не вспомнилась внутри урока местоимений.');complete('pronouns');setTimeout(()=>go('learn'),420)},
-  verb,verbNext(){state.assembly=[];advance('verbStep',V_TOTAL)},verbBack(){state.assembly=[];back('verbStep')},verbSkip(){state.assembly=[];advance('verbStep',V_TOTAL)},verbChoice(ok,b){markChoice(ok,b,'verbStep',V_TOTAL,'verb-'+state.verbStep,'глагол','Глагол не вспомнился; вернуть позже.')},verbWrite(target){checkWrite('verbInput',target,'verbStep',V_TOTAL,'verb-write-'+target,target)},verbSpeak(text){pronounce(text);setTimeout(()=>advance('verbStep',V_TOTAL),180)},verbToken(i){const t=['in Berlin','wohne','Ich'];state.assembly.push(t[i]);save();render()},verbClear(){state.assembly=[];save();render()},verbAssemblyCheck(){if(state.assembly.join(' ')==='Ich wohne in Berlin'){state.assembly=[];advance('verbStep',V_TOTAL)}else{addError('verb-assembly','Ich wohne in Berlin.','сборка','Готовые блоки собраны не в том порядке.');toast('Попробуй переставить готовые блоки.')}},finishVerbs(){complete('verbs');go('learn')},finishVerbsChoice(ok,b){b.classList.add(ok?'correct':'wrong');if(!ok)addError('verb-return','wohnen','повторение','Глагол не вспомнился позже.');complete('verbs');setTimeout(()=>go('learn'),350)},
-  noun,nounNext(){advance('nounStep',N_TOTAL)},nounBack(){back('nounStep')},nounSkip(){advance('nounStep',N_TOTAL)},nounChoice(ok,b){markChoice(ok,b,'nounStep',N_TOTAL,'noun-'+state.nounStep,'существительное','Слово или ситуация не вспомнились; вернуть позже.')},nounWrite(target){checkWrite('nounInput',target,'nounStep',N_TOTAL,'noun-write-'+target,target)},nounSpeak(text){pronounce(text);setTimeout(()=>advance('nounStep',N_TOTAL),180)},finishNouns(){complete('nouns');go('learn')},
+
+  noun,nounNext(){advance('nounStep',N_TOTAL)},nounBack(){back('nounStep')},nounSkip(){advance('nounStep',N_TOTAL)},nounChoice(ok,b){markChoice(ok,b,'nounStep',N_TOTAL,'noun-'+state.nounStep,'существительное','Слово не вспомнилось; вернуть позже в другом формате.')},nounWrite(target){checkWrite('nounInput',target,'nounStep',N_TOTAL,'noun-write-'+target,target)},nounSpeak(text){pronounce(text);setTimeout(()=>advance('nounStep',N_TOTAL),180)},finishNouns(){complete('nouns');BP.pronouns()},
+
+  pronouns,pronounNext(){advance('pronounStep',P_TOTAL)},pronounBack(){back('pronounStep')},pronounSkip(){advance('pronounStep',P_TOTAL)},pronounChoice(ok,b){markChoice(ok,b,'pronounStep',P_TOTAL,'pronoun-'+state.pronounStep,'местоимение','Местоимение не вспомнилось; вернуть позже.')},pronounWrite(target){checkWrite('pronounInput',target,'pronounStep',P_TOTAL,'pronoun-write-'+target,target)},pronounSpeak(text){pronounce(text);setTimeout(()=>advance('pronounStep',P_TOTAL),180)},finishPronounsDirect(){complete('pronouns');BP.verb()},
+
+  verb,verbNext(){state.assembly=[];advance('verbStep',V_TOTAL)},verbBack(){state.assembly=[];back('verbStep')},verbSkip(){state.assembly=[];advance('verbStep',V_TOTAL)},verbChoice(ok,b){markChoice(ok,b,'verbStep',V_TOTAL,'verb-'+state.verbStep,'глагол','Глагол не вспомнился; вернуть позже.')},verbWrite(target){checkWrite('verbInput',target,'verbStep',V_TOTAL,'verb-write-'+target,target)},verbSpeak(text){pronounce(text);setTimeout(()=>advance('verbStep',V_TOTAL),180)},finishVerbsDirect(){complete('verbs');BP.sentence()},
+
+  sentence,sentenceNext(){advance('sentenceStep',S_TOTAL)},sentenceBack(){state.assembly=[];back('sentenceStep')},sentenceSkip(){state.assembly=[];advance('sentenceStep',S_TOTAL)},sentenceToken(i){const t=['in Berlin','wohne','Ich'];state.assembly.push(t[i]);save();render()},sentenceClear(){state.assembly=[];save();render()},sentenceCheck(){if(state.assembly.join(' ')==='Ich wohne in Berlin'){state.assembly=[];advance('sentenceStep',S_TOTAL)}else{addError('sentence-order','Ich wohne in Berlin.','порядок слов','Блоки собраны не в том порядке.');toast('Попробуй переставить знакомые блоки.')}},finishSentenceDirect(){complete('sentence');BP.question()},
+
+  question(){state.questionStep=0;state.feedback='';go('question')},questionNext(){advance('questionStep',Q_TOTAL)},questionBack(){back('questionStep')},questionSkip(){advance('questionStep',Q_TOTAL)},questionChoice(ok,b){markChoice(ok,b,'questionStep',Q_TOTAL,'question-'+state.questionStep,'Wo?','Вопросительное слово не вспомнилось.')},finishQuestionChoice(ok,b){b.classList.add(ok?'correct':'wrong');if(!ok)addError('question-wo','Wo?','вопросительное слово','Wo? означает «где?».');complete('question');setTimeout(()=>BP.preposition(),350)},
+
+  preposition(){state.prepositionStep=0;state.feedback='';go('preposition')},prepositionNext(){advance('prepositionStep',PREP_TOTAL)},prepositionBack(){back('prepositionStep')},prepositionSkip(){advance('prepositionStep',PREP_TOTAL)},prepositionChoice(ok,b){markChoice(ok,b,'prepositionStep',PREP_TOTAL,'prep-aus','aus','Связка aus ... не вспомнилась.')},finishPrepositionDirect(){complete('preposition');BP.conjunction()},
+
+  conjunction(){state.conjunctionStep=0;state.feedback='';go('conjunction')},conjunctionNext(){advance('conjunctionStep',CONJ_TOTAL)},conjunctionBack(){back('conjunctionStep')},conjunctionSkip(){advance('conjunctionStep',CONJ_TOTAL)},conjunctionChoice(ok,b){markChoice(ok,b,'conjunctionStep',CONJ_TOTAL,'conj-und','und','Связка und не вспомнилась.')},finishConjunctionDirect(){complete('conjunction');go('learn')},
+
   numbers,makeNumber(){const w=numberWord(document.getElementById('numberInput')?.value||'');document.getElementById('numberResult').textContent=w||'Введите число от 0 до 9999.'},listenNumber(btn){const w=numberWord(document.getElementById('numberInput')?.value||'127');if(w)play(w,btn)},repeatNumber(){const w=numberWord(document.getElementById('numberInput')?.value||'127');if(w)pronounce(w)},finishNumbers(){complete('numbers');go('learn')},
-  sentence,sentenceNext(){advance('sentenceStep',S_TOTAL)},sentenceBack(){back('sentenceStep')},sentenceSkip(){advance('sentenceStep',S_TOTAL)},sentenceToken(i){const t=['in Berlin','wohne','Ich'];state.assembly.push(t[i]);save();render()},sentenceClear(){state.assembly=[];save();render()},sentenceCheck(){if(state.assembly.join(' ')==='Ich wohne in Berlin'){advance('sentenceStep',S_TOTAL)}else{addError('sentence-order','Ich wohne in Berlin.','порядок слов','Блоки собраны не в том порядке.');toast('Порядок пока не тот. OTTO вернёт это позже другим заданием.');setTimeout(()=>advance('sentenceStep',S_TOTAL),650)}},sentenceWrite(){checkWrite('sentenceInput','Ich wohne in Berlin','sentenceStep',S_TOTAL,'sentence-write','Ich wohne in Berlin.')},sentenceSpeak(){pronounce('Ich wohne in Berlin.');setTimeout(()=>advance('sentenceStep',S_TOTAL),180)},finishSentenceChoice(ok,b){b.classList.add(ok?'correct':'wrong');if(!ok)addError('pronoun-return-er','er','повторение','Местоимение не вспомнилось после темы предложения.');complete('sentence');setTimeout(()=>go('learn'),420)},
   trainError(i){const e=state.errors[i];if(!e)return;if(/Wasser|W \/ Wasser/.test(e.item))return play('Wasser');if(/wohnen/i.test(e.item))return play('wohnen');if(/kommen/i.test(e.item))return play('kommen');toast('Этот элемент вернётся отдельным микроупражнением.')},
   exam(){go('exam')},logout(){localStorage.removeItem(STORE);state=clone(DEFAULT);render()}
 };
