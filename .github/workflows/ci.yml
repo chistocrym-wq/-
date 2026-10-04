@@ -27,7 +27,7 @@ jobs:
             public/index.html public/otto-v12.css public/otto-v15.css public/curriculum-v16.css \
             public/client-log-v14.js public/runtime-v14.js \
             public/course-data-v8.js public/course-data-extra-v8.js public/course-data-core-v8.js \
-            public/speech-v17.js public/app-v15.js public/curriculum-v16.js \
+            public/speech-v17.js public/reading-rules-v15.js public/app-v15.js public/curriculum-v16.js \
             netlify/functions/otto-tts.js netlify/functions/otto-start-pronunciation.js \
             netlify/functions/otto-start-support.js netlify/functions/otto-start-client-log.js; do
             test -f "$file" || { echo "Missing required file: $file"; exit 1; }
@@ -35,7 +35,7 @@ jobs:
 
           for file in \
             public/client-log-v14.js public/runtime-v14.js public/course-data-v8.js \
-            public/course-data-extra-v8.js public/course-data-core-v8.js public/speech-v17.js public/app-v15.js public/curriculum-v16.js public/base-preview-v3.js \
+            public/course-data-extra-v8.js public/course-data-core-v8.js public/speech-v17.js public/reading-rules-v15.js public/app-v15.js public/curriculum-v16.js public/base-preview-v3.js \
             netlify/functions/otto-tts.js netlify/functions/otto-start-pronunciation.js \
             netlify/functions/otto-start-support.js netlify/functions/otto-start-client-log.js; do
             node --check "$file"
@@ -45,13 +45,17 @@ jobs:
           const fs = require('fs');
           const index = fs.readFileSync('public/index.html','utf8');
           const app = fs.readFileSync('public/app-v15.js','utf8');
+          const sharedRules = fs.readFileSync('public/reading-rules-v15.js','utf8');
+          const previewHtml = fs.readFileSync('public/base-preview.html','utf8');
+          const previewApp = fs.readFileSync('public/base-preview-v3.js','utf8');
+          const auth = fs.readFileSync('netlify/functions/otto-start-auth.js','utf8');
           const speech = fs.readFileSync('public/speech-v17.js','utf8');
           const bridge = fs.readFileSync('public/curriculum-v16.js','utf8');
           const runtime = fs.readFileSync('public/runtime-v14.js','utf8');
           const tts = fs.readFileSync('netlify/functions/otto-tts.js','utf8');
           const pron = fs.readFileSync('netlify/functions/otto-start-pronunciation.js','utf8');
 
-          for (const needle of ['otto-v15.css?v=20','curriculum-v16.css?v=20','speech-v17.js?v=20','app-v15.js?v=20','curriculum-v16.js?v=20']) {
+          for (const needle of ['otto-v15.css?v=20','curriculum-v16.css?v=20','speech-v17.js?v=20','reading-rules-v15.js?v=19','app-v15.js?v=20','curriculum-v16.js?v=20']) {
             if (!index.includes(needle)) throw new Error(`index missing ${needle}`);
           }
           for (const old of ['learning-fixes-v4.js','mutation-safety-v10.js','app-v2.js','app-v12.js?v=','app-v14.js?v=','speech-v12.js?v=','speech-v14.js?v=','speech-v15.js?v=','speech-v16.js?v=','pwa-v12.js','cache-reset-v13.js']) {
@@ -61,7 +65,11 @@ jobs:
           if (!runtime.includes('getRegistrations') || !runtime.includes('unregister')) throw new Error('stale service worker cleanup missing');
           if (!app.includes("ALPHA('a01'") || !app.includes("ALPHA('a02'")) throw new Error('alphabet progression missing');
           if (!app.includes("RULE('r01'") || !app.includes("RULE('r04'")) throw new Error('reading-rule progression missing');
-          for (const rule of ['ei','ie','sch','ichch','achch','sp','st','eu','ss','umlaut','ending']) if (!app.includes(`id:'${rule}'`)) throw new Error(`reading rule missing ${rule}`);
+          if (!app.includes('window.OttoReadingRulesV15')) throw new Error('main app does not consume shared reading-rule source');
+          for (const rule of ['j','ei','ie','sch','ichch','achch','z','w','v','sp','st','eu','ss','umlaut','ending']) if (!sharedRules.includes(`id:'${rule}'`)) throw new Error(`shared main reading rule missing ${rule}`);
+          for (const needle of ['course-data-v8.js?v=20','course-data-extra-v8.js?v=20','course-data-core-v8.js?v=20','reading-rules-v15.js?v=19','base-preview-v3.js?v=19']) if (!previewHtml.includes(needle)) throw new Error(`preview missing ${needle}`);
+          if (!previewApp.includes('window.OttoReadingRulesV15') || !previewApp.includes('window.OttoCourseDataV8')) throw new Error('preview is not sourcing reading rules/vocabulary from shared project data');
+          if (previewApp.includes('preview-register') || previewApp.includes('preview-login') || auth.includes('preview-register') || auth.includes('preview-login')) throw new Error('preview-only auth API actions must not exist');
           if (!bridge.includes('От нуля — именно к тренажёру A1') || !bridge.includes('Ещё важные особенности для A1')) throw new Error('visible A1 route or reading extras missing');
           for (const rule of ['au','tsch','qu','ck','tz','pf','ng / nk','гласная + h','-ig в конце']) if (!bridge.includes(rule)) throw new Error(`extra reading feature missing ${rule}`);
           if (!app.includes('Мини‑тест готовности к Otto A1') || !app.includes('score>=80') || !app.includes('>=60')) throw new Error('A1 readiness test missing');
@@ -96,6 +104,12 @@ jobs:
           console.log('Curriculum coverage assertions passed.');
           NODE
 
+      - name: Verify protected backend matches main
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch origin main --depth=1
+          git diff --exit-code origin/main -- netlify/functions/otto-start-auth.js netlify/functions/otto-tts.js netlify/functions/otto-start-pronunciation.js
+
       - name: Probe Deploy Preview TTS against production
         if: github.event_name == 'pull_request'
         shell: bash
@@ -105,7 +119,7 @@ jobs:
           echo "Preview: $PREVIEW"
           for i in $(seq 1 30); do
             code=$(curl -sS -o /tmp/page.html -w '%{http_code}' --max-time 15 "$PREVIEW/base-preview?v=${GITHUB_SHA}" || true)
-            if [ "$code" = "200" ] && grep -q "base-preview-v3.js?v=18" /tmp/page.html; then break; fi
+            if [ "$code" = "200" ] && grep -q "base-preview-v3.js?v=19" /tmp/page.html; then break; fi
             echo "Waiting for preview page: HTTP $code ($i/30)"
             sleep 4
           done
@@ -149,6 +163,6 @@ jobs:
         if: always() && github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
         with:
-          name: otto-start-three-topics-v18
+          name: otto-start-authoritative-tz-v19
           path: test-artifacts/*.png
           if-no-files-found: warn
