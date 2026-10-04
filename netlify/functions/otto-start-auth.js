@@ -19,7 +19,7 @@ function json(data, status = 200, headers = {}) {
 function store() {
   return Netlify.context?.deploy?.context === 'production'
     ? getStore(STORE)
-    : getDeployStore(STORE);
+    : getDeployStore({ name: STORE, consistency: 'strong' });
 }
 
 function env(name) {
