@@ -92,7 +92,7 @@ try{
 
   // Security boundary: production must reject preview-login.
   const prodPreviewLogin=await page.request.post('https://otto-start.netlify.app/api/otto-start-auth',{data:{action:'preview-login'}});
-  if(![403,404].includes(prodPreviewLogin.status()))remember('Production accepted preview-login, HTTP '+prodPreviewLogin.status());
+  if(![401,403,404].includes(prodPreviewLogin.status()))remember('Production accepted preview-login, HTTP '+prodPreviewLogin.status());
 
   // Enter through the real Deploy Preview server session.
   await previewLogin(page);
