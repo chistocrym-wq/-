@@ -71,9 +71,13 @@ jobs:
           if (!app.includes("RULE('r01'") || !app.includes("RULE('r04'")) throw new Error('reading-rule progression missing');
           if (!app.includes('window.OttoReadingRulesV15')) throw new Error('main app does not consume shared reading-rule source');
           for (const rule of ['j','ei','ie','sch','ichch','achch','z','w','v','sp','st','eu','ss','umlaut','ending']) if (!sharedRules.includes(`id:'${rule}'`)) throw new Error(`shared main reading rule missing ${rule}`);
-          for (const needle of ['course-data-v8.js?v=20','course-data-extra-v8.js?v=20','course-data-core-v8.js?v=20','reading-rules-v15.js?v=19','base-preview-v3.js?v=19']) if (!previewHtml.includes(needle)) throw new Error(`preview missing ${needle}`);
+          for (const needle of ['course-data-v8.js?v=20','course-data-extra-v8.js?v=20','course-data-core-v8.js?v=20','reading-rules-v15.js?v=19','base-preview-v3.js?v=20']) if (!previewHtml.includes(needle)) throw new Error(`preview missing ${needle}`);
           if (!previewApp.includes('window.OttoReadingRulesV15') || !previewApp.includes('window.OttoCourseDataV8')) throw new Error('preview is not sourcing reading rules/vocabulary from shared project data');
-          if (previewApp.includes('preview-register') || previewApp.includes('preview-login') || auth.includes('preview-register') || auth.includes('preview-login')) throw new Error('preview-only auth API actions must not exist');
+          if (previewApp.includes('preview-register') || auth.includes('preview-register')) throw new Error('old fake preview-register must not exist');
+          if (!previewApp.includes("api('preview-login'") || !previewApp.includes("api('preview-reset'")) throw new Error('preview client test-session actions missing');
+          for (const needle of ["PREVIEW_TEST_USER_ID = 'preview-test-user'","deployContext() !== 'deploy-preview'","deploy-preview-\\d+--otto-start\\.netlify\\.app","action === 'preview-login'","action === 'preview-reset'"]) {
+            if (!auth.includes(needle)) throw new Error(`secure preview auth guard missing ${needle}`);
+          }
           if (!bridge.includes('От нуля — именно к тренажёру A1') || !bridge.includes('Ещё важные особенности для A1')) throw new Error('visible A1 route or reading extras missing');
           if (!bridge.includes('window.OttoReadingExtraRulesV16')) throw new Error('curriculum does not consume shared extra reading rules');
           for (const rule of ['au','tsch','qu','ck','tz','pf','ng / nk','гласная + h','-ig в конце']) if (!sharedRules.includes(rule)) throw new Error(`shared extra reading feature missing ${rule}`);
@@ -109,11 +113,11 @@ jobs:
           console.log('Curriculum coverage assertions passed.');
           NODE
 
-      - name: Verify protected backend matches main
+      - name: Verify speech backends still match main
         if: github.event_name == 'pull_request'
         run: |
           git fetch origin main --depth=1
-          git diff --exit-code origin/main -- netlify/functions/otto-start-auth.js netlify/functions/otto-tts.js netlify/functions/otto-start-pronunciation.js
+          git diff --exit-code origin/main -- netlify/functions/otto-tts.js netlify/functions/otto-start-pronunciation.js
 
       - name: Probe Deploy Preview TTS against production
         if: github.event_name == 'pull_request'
@@ -124,7 +128,7 @@ jobs:
           echo "Preview: $PREVIEW"
           for i in $(seq 1 30); do
             code=$(curl -sS -o /tmp/page.html -w '%{http_code}' --max-time 15 "$PREVIEW/base-preview?v=${GITHUB_SHA}" || true)
-            if [ "$code" = "200" ] && grep -q "base-preview-v3.js?v=19" /tmp/page.html; then break; fi
+            if [ "$code" = "200" ] && grep -q "base-preview-v3.js?v=20" /tmp/page.html; then break; fi
             echo "Waiting for preview page: HTTP $code ($i/30)"
             sleep 4
           done
@@ -134,6 +138,13 @@ jobs:
           prod_auth_status=$(curl -sS -X POST "https://otto-start.netlify.app/api/otto-start-auth" -H 'content-type: application/json' --data '{"action":"status"}' || true)
           echo "Preview auth provider status: $auth_status"
           echo "Production auth provider status: $prod_auth_status"
+
+          preview_login_code=$(curl -sS -o /tmp/preview-login.json -w '%{http_code}' -X POST "$PREVIEW/api/otto-start-auth" -H 'content-type: application/json' --data '{"action":"preview-login"}' || true)
+          prod_preview_login_code=$(curl -sS -o /tmp/prod-preview-login.json -w '%{http_code}' -X POST "https://otto-start.netlify.app/api/otto-start-auth" -H 'content-type: application/json' --data '{"action":"preview-login"}' || true)
+          echo "Preview test login HTTP: $preview_login_code"
+          echo "Production preview-login HTTP: $prod_preview_login_code"
+          test "$preview_login_code" = "200"
+          case "$prod_preview_login_code" in 403|404) ;; *) echo "SECURITY ERROR: Production accepted preview-login"; cat /tmp/prod-preview-login.json; exit 1;; esac
 
           probe_tts() {
             label="$1"; origin="$2"; out="/tmp/${label}.bin"; hdr="/tmp/${label}.headers"
@@ -173,6 +184,6 @@ jobs:
         if: always() && github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
         with:
-          name: otto-start-authoritative-tz-v19
+          name: otto-start-secure-preview-v20
           path: test-artifacts/*.png
           if-no-files-found: warn
