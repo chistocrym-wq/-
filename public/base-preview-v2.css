@@ -306,3 +306,12 @@ body > [data-netlify-deploy-id]{display:none!important}
   .bp-rule-map{gap:5px}
   .bp-rule-map span{min-height:38px;padding:5px;font-size:12px}
 }
+
+
+/* Deploy Preview test-account controls */
+.bp-preview-access{margin-top:16px;padding-top:4px}
+.bp-divider{display:flex;align-items:center;gap:10px;margin:10px 0;color:#718587;font-size:10px;font-weight:850;text-transform:uppercase;letter-spacing:.08em}
+.bp-divider::before,.bp-divider::after{content:"";height:1px;flex:1;background:#d9e6e3}
+.bp-btn.preview{background:#eef7f5;color:#155d59;border:1px dashed #8bc9c2}
+.bp-preview-access>small{display:block;margin-top:6px;text-align:center;color:#748789;font-size:10px;font-weight:750}
+.bp-settings-row.preview-only{background:#f8fbfa;border-radius:14px;padding:10px}
