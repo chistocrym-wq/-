@@ -131,7 +131,9 @@ jobs:
           test "$code" = "200"
 
           auth_status=$(curl -sS -X POST "$PREVIEW/api/otto-start-auth" -H 'content-type: application/json' --data '{"action":"status"}' || true)
+          prod_auth_status=$(curl -sS -X POST "https://otto-start.netlify.app/api/otto-start-auth" -H 'content-type: application/json' --data '{"action":"status"}' || true)
           echo "Preview auth provider status: $auth_status"
+          echo "Production auth provider status: $prod_auth_status"
 
           probe_tts() {
             label="$1"; origin="$2"; out="/tmp/${label}.bin"; hdr="/tmp/${label}.headers"
