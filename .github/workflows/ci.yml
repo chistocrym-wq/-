@@ -59,7 +59,7 @@ jobs:
           const tts = fs.readFileSync('netlify/functions/otto-tts.js','utf8');
           const pron = fs.readFileSync('netlify/functions/otto-start-pronunciation.js','utf8');
 
-          for (const needle of ['otto-v15.css?v=20','curriculum-v16.css?v=20','speech-v17.js?v=20','reading-rules-v15.js?v=19','app-v15.js?v=20','curriculum-v16.js?v=20']) {
+          for (const needle of ['otto-v15.css?v=20','curriculum-v16.css?v=20','speech-v17.js?v=20','reading-rules-v15.js?v=20','app-v15.js?v=20','curriculum-v16.js?v=20']) {
             if (!index.includes(needle)) throw new Error(`index missing ${needle}`);
           }
           for (const old of ['learning-fixes-v4.js','mutation-safety-v10.js','app-v2.js','app-v12.js?v=','app-v14.js?v=','speech-v12.js?v=','speech-v14.js?v=','speech-v15.js?v=','speech-v16.js?v=','pwa-v12.js','cache-reset-v13.js']) {
@@ -71,7 +71,7 @@ jobs:
           if (!app.includes("RULE('r01'") || !app.includes("RULE('r04'")) throw new Error('reading-rule progression missing');
           if (!app.includes('window.OttoReadingRulesV15')) throw new Error('main app does not consume shared reading-rule source');
           for (const rule of ['j','ei','ie','sch','ichch','achch','z','w','v','sp','st','eu','ss','umlaut','ending']) if (!sharedRules.includes(`id:'${rule}'`)) throw new Error(`shared main reading rule missing ${rule}`);
-          for (const needle of ['course-data-v8.js?v=20','course-data-extra-v8.js?v=20','course-data-core-v8.js?v=20','reading-rules-v15.js?v=19','base-preview-v3.js?v=20']) if (!previewHtml.includes(needle)) throw new Error(`preview missing ${needle}`);
+          for (const needle of ['course-data-v8.js?v=20','course-data-extra-v8.js?v=20','course-data-core-v8.js?v=20','reading-rules-v15.js?v=20','base-preview-v3.js?v=20']) if (!previewHtml.includes(needle)) throw new Error(`preview missing ${needle}`);
           if (!previewApp.includes('window.OttoReadingRulesV15') || !previewApp.includes('window.OttoCourseDataV8')) throw new Error('preview is not sourcing reading rules/vocabulary from shared project data');
           if (previewApp.includes('preview-register') || auth.includes('preview-register')) throw new Error('old fake preview-register must not exist');
           if (!previewApp.includes("api('preview-login'") || !previewApp.includes("api('preview-reset'")) throw new Error('preview client test-session actions missing');
@@ -144,7 +144,7 @@ jobs:
           echo "Preview test login HTTP: $preview_login_code"
           echo "Production preview-login HTTP: $prod_preview_login_code"
           test "$preview_login_code" = "200"
-          case "$prod_preview_login_code" in 403|404) ;; *) echo "SECURITY ERROR: Production accepted preview-login"; cat /tmp/prod-preview-login.json; exit 1;; esac
+          case "$prod_preview_login_code" in 401|403|404) ;; *) echo "SECURITY ERROR: Production accepted preview-login"; cat /tmp/prod-preview-login.json; exit 1;; esac
 
           probe_tts() {
             label="$1"; origin="$2"; out="/tmp/${label}.bin"; hdr="/tmp/${label}.headers"
