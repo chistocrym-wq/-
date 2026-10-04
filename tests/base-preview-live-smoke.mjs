@@ -6,12 +6,6 @@ if(!base) throw new Error('BASE_URL is required');
 const url=base+'/base-preview';
 const failures=[];
 const remember=m=>{failures.push(m);console.error('SMOKE:',m)};
-const password='otto-preview-16';
-const fixtureCandidates=[
-  'smoke+54bccc77c0-37115957244-1@example.com',
-  'smoke+b37562af8b-37115856456-1@example.com',
-  'smoke+44a9abb2a1-37114395718-1@example.com'
-];
 let browser;
 fs.mkdirSync('test-artifacts',{recursive:true});
 
@@ -28,22 +22,9 @@ async function saveCloud(page){
   const ok=await page.evaluate(()=>window.__OTTO_BASE_PREVIEW_SAVE_CLOUD());
   if(!ok)remember('Cloud progress save failed');
 }
-async function loginFixtureByApi(page){
-  return await page.evaluate(async ({candidates,password})=>{
-    for(const login of candidates){
-      const r=await fetch('/api/otto-start-auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'login',login,password})});
-      const d=await r.json().catch(()=>({}));
-      if(r.ok&&d.session?.token)return {login,token:d.session.token,user:d.user};
-    }
-    return null;
-  },{candidates:fixtureCandidates,password});
-}
-async function loginFixtureByUi(page,login){
-  await page.waitForSelector('#authLogin',{timeout:10000});
-  await page.locator('#authLogin').fill(login);
-  await page.locator('#authPassword').fill(password);
-  await page.getByRole('button',{name:'Войти'}).click();
-  await page.waitForFunction(()=>document.body.innerText.includes('Ваш прогресс')||document.body.innerText.includes('Привет! Я OTTO'),null,{timeout:12000});
+async function previewLogin(page){
+  await page.getByRole('button',{name:/Войти в тестовый аккаунт/}).click();
+  await page.waitForFunction(()=>document.body.innerText.includes('Привет! Я OTTO')||document.body.innerText.includes('Ваш прогресс')||document.body.innerText.includes('А это помнишь?'),null,{timeout:12000});
 }
 async function logout(page){
   if((await page.getByRole('button',{name:'Настройки'}).count())>0)await page.getByRole('button',{name:'Настройки'}).last().click();
@@ -93,75 +74,130 @@ try{
   await page.evaluate(()=>localStorage.clear());
   await page.reload({waitUntil:'domcontentloaded'});
   await page.waitForSelector('#authLogin',{timeout:10000});
-  await textHas(page,'Получить код подтверждения');
+
+  // Ordinary auth stays visible; OTP is not bypassed or faked.
+  await textHas(page,'Email');
+  await textHas(page,'Телефон');
+  await textHas(page,'Уже есть аккаунт? Войти');
+  await textHas(page,'🧪 Войти в тестовый аккаунт');
+  await textHas(page,'Только для Deploy Preview');
   const registerPassword=page.locator('#authPassword');
   if((await registerPassword.getAttribute('minlength'))!=='8')remember('Registration password minlength is not 8');
-  const jsText=await (await page.request.get(base+'/base-preview-v3.js?v=19')).text();
-  if(jsText.includes('preview-register')||jsText.includes('preview-login'))remember('Preview-only auth API action still present');
+  const jsText=await (await page.request.get(base+'/base-preview-v3.js?v=20')).text();
+  if(!jsText.includes("api('preview-login'")||!jsText.includes("api('preview-reset'"))remember('Preview test-session actions missing in client');
+  if(jsText.includes("api('preview-register'"))remember('Old fake preview-register returned');
 
   const providers=await page.evaluate(async()=>{const r=await fetch('/api/otto-start-auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'status'})});return await r.json()});
   if(!providers||typeof providers.providers!=='object')remember('Existing auth status endpoint unavailable');
 
-  await page.getByRole('button',{name:/Уже есть аккаунт/}).click();
-  await textHas(page,'С возвращением');
-  const fixture=await loginFixtureByApi(page);
-  let st;
-  if(fixture){
-    await page.evaluate(({token})=>localStorage.setItem('ottoStartSessionV8',token),fixture);
-    await page.reload({waitUntil:'domcontentloaded'});
-    await page.waitForFunction(()=>document.body.innerText.includes('Ваш прогресс')||document.body.innerText.includes('Привет! Я OTTO'),null,{timeout:10000});
+  // Security boundary: production must reject preview-login.
+  const prodPreviewLogin=await page.request.post('https://otto-start.netlify.app/api/otto-start-auth',{data:{action:'preview-login'}});
+  if(![403,404].includes(prodPreviewLogin.status()))remember('Production accepted preview-login, HTTP '+prodPreviewLogin.status());
 
-    // Verify the real unchanged main API can persist onboardingCompleted in preview profile progress.
-    await setState(page,{onboardingCompleted:false,onboardingCompletedAt:'',lastStudyDate:'',reviewSkippedDate:'',screen:'home'});
-    await saveCloud(page);
-    await logout(page);
-    if(!(await page.locator('#authLogin').count()))await page.getByRole('button',{name:/Уже есть аккаунт/}).click();
-    await loginFixtureByUi(page,fixture.login);
-    await textHas(page,'Привет! Я OTTO');
-    await textHas(page,'Алфавит и чтение');
-    await page.getByRole('button',{name:'Пропустить инструкцию'}).click();
-    await page.waitForFunction(()=>document.body.innerText.includes('Ваш прогресс'),null,{timeout:10000});
-    st=await getState(page);
-    if(!st.onboardingCompleted)remember('onboardingCompleted was not set after skip');
-    await saveCloud(page);
+  // Enter through the real Deploy Preview server session.
+  await previewLogin(page);
+  let st=await getState(page);
+  const sessionToken=await page.evaluate(()=>localStorage.getItem('ottoStartSessionV8')||'');
+  if(!sessionToken)remember('Preview login did not issue a server session token');
+  const me=await page.evaluate(async()=>{
+    const token=localStorage.getItem('ottoStartSessionV8')||'';
+    const r=await fetch('/api/otto-start-auth',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({action:'me'})});
+    return {status:r.status,data:await r.json().catch(()=>({}))};
+  });
+  if(me.status!==200||me.data?.user?.login!=='preview-test-user')remember('Preview session is not the fixed server test account');
 
-    await logout(page);
-    if(!(await page.locator('#authLogin').count()))await page.getByRole('button',{name:/Уже есть аккаунт/}).click();
-    await loginFixtureByUi(page,fixture.login);
-    await textHas(page,'Ваш прогресс');
+  // Make this run deterministic. If an older run left progress, reset it using the visible Preview-only control.
+  if(st.onboardingCompleted||st.screen!=='onboarding'){
+    if((await page.getByRole('button',{name:'Настройки'}).count())>0)await page.getByRole('button',{name:'Настройки'}).last().click();
+    else await setState(page,{screen:'settings'});
+    await textHas(page,'Сбросить тестовый прогресс');
+    await page.getByRole('button',{name:'Сбросить'}).click();
+    await page.waitForTimeout(700);
     st=await getState(page);
-    if(!st.onboardingCompleted)remember('onboardingCompleted not restored from server');
-    if(st.screen==='onboarding')remember('Onboarding auto-opened on second login');
-  }else{
-    console.log('NOTE: no persisted Deploy Preview account exists in this deploy-scoped Blob store; OTP second-login browser check is skipped rather than bypassing the unchanged auth API.');
-    const appSource=await (await page.request.get(base+'/base-preview-v3.js?v=19')).text();
-    for(const needle of ["profile:{onboardingCompleted:Boolean(state.onboardingCompleted)","api('save-progress'","api('load-progress'","state.onboardingCompleted?'home':'onboarding'"]){
-      if(!appSource.includes(needle))remember('Server onboarding persistence code missing: '+needle);
-    }
-    await setState(page,{screen:'onboarding',onboardingCompleted:false,onboardingStep:0,onboardingManual:false});
-    await textHas(page,'Привет! Я OTTO');
-    await page.getByRole('button',{name:'Пропустить инструкцию'}).click();
-    await textHas(page,'Ваш прогресс');
-    st=await getState(page);
-    if(!st.onboardingCompleted)remember('onboardingCompleted was not set by onboarding skip');
+    if(st.onboardingCompleted)remember('Preview reset did not clear onboardingCompleted');
+    if(st.errors.length||st.completed.length||st.learnedElements.length)remember('Preview reset did not clear learning progress');
+    await page.getByRole('button',{name:'Выйти'}).click();
+    await page.waitForFunction(()=>document.body.innerText.includes('Войти в тестовый аккаунт'),null,{timeout:10000});
+    await previewLogin(page);
   }
 
-  // Manual replay: all 5 screens, no progress reset.
+  await textHas(page,'Привет! Я OTTO');
   st=await getState(page);
-  const beforeManual=JSON.stringify({completed:st.completed,alphaStep:st.alphaStep,readingRule:st.readingRule,numberStep:st.numberStep});
+  if(st.onboardingCompleted)remember('Fresh preview test user did not start with onboardingCompleted=false');
+
+  // Finish onboarding via its supported skip path and verify server persistence.
+  await page.getByRole('button',{name:'Пропустить инструкцию'}).click();
+  await page.waitForFunction(()=>document.body.innerText.includes('Ваш прогресс'),null,{timeout:10000});
+  st=await getState(page);
+  if(!st.onboardingCompleted)remember('Skipping onboarding did not set onboardingCompleted');
+  await saveCloud(page);
+
+  // Start Alphabet, then produce a real repeated lesson error.
+  await page.evaluate(()=>window.BP.alphabet());
+  await setState(page,{screen:'alphabet',alphaStep:8,errors:[],retryCounts:{}});
+  let wrong=page.locator('.bp-option').first();
+  await wrong.click(); await page.waitForTimeout(600);
+  if((await getState(page)).errors.length)remember('Lesson error stored after first miss instead of retry');
+  wrong=page.locator('.bp-option').first();
+  await wrong.click(); await page.waitForTimeout(800);
+  st=await getState(page);
+  if(!st.errors.some(e=>e.id==='alpha-W'&&!e.resolved))remember('Repeated Alphabet miss did not enter My Errors');
+  await saveCloud(page);
+
+  await page.getByRole('button',{name:'Мои ошибки'}).last().click();
+  await textHas(page,'W');
+  await textHas(page,'Потренировать');
+
+  const beforeLogout=await getState(page);
+  const persistedSignature=JSON.stringify({
+    onboardingCompleted:beforeLogout.onboardingCompleted,
+    alphaStep:beforeLogout.alphaStep,
+    errors:beforeLogout.errors.map(e=>({id:e.id,count:e.count,resolved:e.resolved}))
+  });
+
+  // Second login: no automatic onboarding; progress and errors come back from server.
+  await logout(page);
+  await previewLogin(page);
+  await textHas(page,'Ваш прогресс');
+  st=await getState(page);
+  if(st.screen==='onboarding')remember('Onboarding auto-opened on second preview login');
+  const restoredSignature=JSON.stringify({
+    onboardingCompleted:st.onboardingCompleted,
+    alphaStep:st.alphaStep,
+    errors:st.errors.map(e=>({id:e.id,count:e.count,resolved:e.resolved}))
+  });
+  if(restoredSignature!==persistedSignature)remember('Preview server progress was not restored after logout/login');
+
+  // Manual onboarding replay must not reset learning progress.
+  const beforeManualState=await getState(page);
+  const beforeManual=JSON.stringify({completed:beforeManualState.completed,alphaStep:beforeManualState.alphaStep,errors:beforeManualState.errors,learned:beforeManualState.learnedElements});
   await page.getByRole('button',{name:'Настройки'}).last().click();
   await textHas(page,'Как заниматься в OTTO Start');
+  await textHas(page,'Сбросить тестовый прогресс');
   await page.getByRole('button',{name:'Открыть'}).first().click();
-  for(let screen=1;screen<=5;screen++){
-    await textHas(page,'Экран '+screen+' из 5');
-    if(screen<5)await page.getByRole('button',{name:'Дальше'}).click();
-  }
-  await textHas(page,'Начать с самого начала');
-  await textHas(page,'Выбрать тему самому');
-  await page.getByRole('button',{name:/Выбрать тему самому/}).click();
-  const afterManual=await getState(page);
-  const afterKey=JSON.stringify({completed:afterManual.completed,alphaStep:afterManual.alphaStep,readingRule:afterManual.readingRule,numberStep:afterManual.numberStep});
-  if(beforeManual!==afterKey)remember('Manual onboarding replay changed learning progress');
+  await textHas(page,'Экран 1 из 5');
+  await page.getByRole('button',{name:'Пропустить инструкцию'}).click();
+  await textHas(page,'Настройки');
+  const afterManualState=await getState(page);
+  const afterManual=JSON.stringify({completed:afterManualState.completed,alphaStep:afterManualState.alphaStep,errors:afterManualState.errors,learned:afterManualState.learnedElements});
+  if(beforeManual!==afterManual)remember('Manual onboarding replay changed learning progress');
+
+  // Visible Preview-only reset clears server + local learning state, then next login is first-entry again.
+  await page.getByRole('button',{name:'Сбросить'}).click();
+  await page.waitForTimeout(800);
+  st=await getState(page);
+  if(st.onboardingCompleted||st.errors.length||st.completed.length||st.learnedElements.length)remember('Preview reset did not clear test profile state');
+  await page.getByRole('button',{name:'Выйти'}).click();
+  await page.waitForFunction(()=>document.body.innerText.includes('Войти в тестовый аккаунт'),null,{timeout:10000});
+  await previewLogin(page);
+  await textHas(page,'Привет! Я OTTO');
+  st=await getState(page);
+  if(st.onboardingCompleted||st.screen!=='onboarding')remember('Reset test profile did not restore first-entry onboarding');
+
+  // Continue the broader Preview smoke from a clean, valid server session.
+  await page.getByRole('button',{name:'Пропустить инструкцию'}).click();
+  await page.waitForFunction(()=>document.body.innerText.includes('Ваш прогресс'),null,{timeout:10000});
+  await saveCloud(page);
 
   // Alphabet: real personal spelling flow, Cyrillic guard, tricky letters, 8-task control.
   await setState(page,{screen:'alphabet',alphaStep:0,errors:[],retryCounts:{}});
@@ -263,7 +299,7 @@ try{
   for(const [w,h] of sizes)await layout(page,w,h,w+'-praise');
 
   if(failures.length)throw new Error(failures.join('\n'));
-  console.log('OTTO Start v19 authoritative-TZ smoke passed.');
+  console.log('OTTO Start v20 secure-preview-session smoke passed.');
 }finally{
   if(browser)await browser.close();
 }
