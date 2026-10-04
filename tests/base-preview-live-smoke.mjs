@@ -255,11 +255,12 @@ try{
   await layout(page,1280,900,'desktop-home');
   for(const [w,h] of sizes)await layout(page,w,h,w+'-home');
   await setState(page,{screen:'onboarding',onboardingManual:true,onboardingStep:2});
-  for(const [w,h] of [[320,568],[390,844],[520,900]])await layout(page,w,h,w+'-onboarding');
+  for(const [w,h] of sizes)await layout(page,w,h,w+'-onboarding');
   await setState(page,{screen:'reading',readingStarted:true,readingRule:3,readingPhase:4});
-  for(const [w,h] of [[320,568],[360,800],[390,844]])await layout(page,w,h,w+'-lesson');
+  await textHas(page,'← Назад'); await textHas(page,'Пропустить задание'); await textHas(page,'Вернуться к темам'); await textHas(page,'Пропустить тему');
+  for(const [w,h] of sizes)await layout(page,w,h,w+'-lesson');
   await setState(page,{screen:'readingResult',readingControlResults:Array(30).fill(true),readingControlItems:controlState.readingControlItems});
-  await layout(page,390,844,'390-praise');
+  for(const [w,h] of sizes)await layout(page,w,h,w+'-praise');
 
   if(failures.length)throw new Error(failures.join('\n'));
   console.log('OTTO Start v19 authoritative-TZ smoke passed.');
