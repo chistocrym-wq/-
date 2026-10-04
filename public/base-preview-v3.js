@@ -22,6 +22,8 @@ function shouldOfferReview(){return Boolean(state.onboardingCompleted&&state.las
 function startSession(topic){if(state.sessionDate!==TODAY()){state.sessions=Number(state.sessions||0)+1;state.sessionDate=TODAY()}state.lastStudyDate=TODAY();if(topic)state.lastStudyTopic=topic;save()}
 function learnElement(id){if(id&&!state.learnedElements.includes(id)){state.learnedElements.push(id);save()}} function completeTopic(id){if(!state.completed.includes(id))state.completed.push(id);state.lastStudyDate=TODAY();state.lastStudyTopic=id;save()}
 function addError(id,item,topic,skill,detail,rule){let e=state.errors.find(x=>x.id===id);if(e){e.count=Number(e.count||1)+1;e.detail=detail;e.rule=rule||e.rule;e.resolved=false;e.resolvedAt='';e.lastErrorAt=new Date().toISOString()}else state.errors.push({id,item,topic,skill,detail,rule:rule||'',count:1,practiceCount:0,successes:0,resolved:false,lastErrorAt:new Date().toISOString(),resolvedAt:''});save()}
+function lessonMistake(id,item,topic,skill,detail,rule){state.retryCounts=state.retryCounts||{};state.retryCounts[id]=Number(state.retryCounts[id]||0)+1;const repeated=state.retryCounts[id]>=2;if(repeated){addError(id,item,topic,skill,detail,rule);state.retryCounts[id]=0}else save();return repeated}
+function clearMistake(id){if(state.retryCounts?.[id]){delete state.retryCounts[id];save()}}
 function resolveError(id){const e=state.errors.find(x=>x.id===id);if(!e)return;e.practiceCount=Number(e.practiceCount||0)+1;e.successes=Number(e.successes||0)+1;e.resolved=true;e.resolvedAt=new Date().toISOString();save()}
 function activeErrors(){return state.errors.filter(x=>!x.resolved)} function go(screen){state.screen=screen;state.feedback='';state.assembly=[];state.numberAssembly=[];save();render()}
 function setFeedback(html){state.feedback=html;save()} function feedback(){return state.feedback?'<div class="bp-feedback '+(state.feedback.includes('Что произошло')?'bad':'good')+'">'+state.feedback+'</div>':''}
@@ -30,7 +32,7 @@ function play(text,button,kind){const s=speech();if(s?.play)return s.play(text,{
 function pronounce(text){const s=speech();if(s?.check)return s.check(text,[text]);toast('Проверка произношения OTTO ещё загружается.')}
 function spellValue(v){return String(v||'').toUpperCase().replace(/ß/g,'ẞ').split('').filter(x=>/[A-ZÄÖÜẞ]/.test(x))} function spellText(v){return spellValue(v).map(x=>x==='ẞ'?'ß':x).join(' ')}
 function playLetters(value){const letters=spellValue(value),s=speech();if(!s?.play){toast('Озвучка OTTO ещё загружается.');return}(async()=>{for(const ch of letters){await s.play(ch,{mode:'slow',kind:'letter'});await new Promise(r=>setTimeout(r,100))}})()}
-function trackedSpeech(expected,meta,onDone){pronounce(expected);setTimeout(()=>{const modal=document.querySelector('[data-v17-speech-modal]');if(!modal)return;let last='',badCount=0,finished=false;const ob=new MutationObserver(()=>{const status=modal.querySelector('[data-check-status]');if(!status||finished)return;const txt=(status.textContent||'').trim();if(!txt||txt===last||/Запись готова/.test(txt))return;last=txt;const good=status.classList.contains('good')&&/Хорошо|✓/.test(txt),assessed=good||/Повторите|Почти/.test(txt);if(!assessed)return;if(good){finished=true;ob.disconnect();if(meta?.errorId)resolveError(meta.errorId);modal.querySelector('[data-close]')?.click();onDone?.(true,txt)}else{badCount++;if(badCount>=2){finished=true;ob.disconnect();if(meta?.errorId)addError(meta.errorId,meta.item||expected,meta.topic||'',meta.skill||'произношение',meta.detail||txt,meta.rule||'');modal.querySelector('[data-close]')?.click();onDone?.(false,txt)}}});ob.observe(modal,{subtree:true,childList:true,attributes:true})},80)}
+function trackedSpeech(expected,meta,onDone){pronounce(expected);setTimeout(()=>{const modal=document.querySelector('[data-v17-speech-modal]');if(!modal)return;let last='',badCount=0,finished=false;const ob=new MutationObserver(()=>{const status=modal.querySelector('[data-check-status]');if(!status||finished)return;const txt=(status.textContent||'').trim();if(!txt||txt===last||/Запись готова/.test(txt))return;last=txt;const good=status.classList.contains('good')&&/Хорошо|✓/.test(txt),assessed=good||/Повторите|Почти/.test(txt);if(!assessed)return;if(good){finished=true;ob.disconnect();if(meta?.resolveOnSuccess&&meta?.errorId)resolveError(meta.errorId);modal.querySelector('[data-close]')?.click();onDone?.(true,txt)}else{badCount++;if(badCount>=2){finished=true;ob.disconnect();if(meta?.errorId)addError(meta.errorId,meta.item||expected,meta.topic||'',meta.skill||'произношение',meta.detail||txt,meta.rule||'');modal.querySelector('[data-close]')?.click();onDone?.(false,txt)}}});ob.observe(modal,{subtree:true,childList:true,attributes:true})},80)}
 function top(){return '<header class="bp-top"><div class="bp-brand"><img src="/otto/otto-home.webp" alt="OTTO"><div><b>Otto Start</b><small>Базовый немецкий</small></div></div><button class="bp-icon" type="button" onclick="BP.settings()" aria-label="Настройки">⚙</button></header>'}
 function nav(active){const items=[['home','⌂','Главная'],['learn','▦','Учусь'],['errors','⚠','Мои ошибки'],['settings','⚙','Настройки']];return '<nav class="bp-bottom">'+items.map(x=>'<button type="button" class="'+(active===x[0]?'active':'')+'" onclick="BP.nav(\''+x[0]+'\')"><span>'+x[1]+'</span>'+x[2]+'</button>').join('')+'</nav>'}
 function app(body,active,wide){root.innerHTML='<div class="bp-app">'+top()+'<main class="bp-main"><div class="bp-shell '+(wide?'wide':'')+'">'+body+'</div></main>'+nav(active||'learn')+'</div>';scrollTo(0,0)}
@@ -44,27 +46,82 @@ function titleCard(kicker,title,lead){return '<div class="bp-card"><div class="b
 
 const ALPHABET=[['A','а'],['B','бэ'],['C','цэ'],['D','дэ'],['E','э'],['F','эф'],['G','гэ'],['H','ха'],['I','и'],['J','йот'],['K','ка'],['L','эль'],['M','эм'],['N','эн'],['O','о'],['P','пэ'],['Q','ку'],['R','эр'],['S','эс'],['T','тэ'],['U','у'],['V','фау'],['W','вэ'],['X','икс'],['Y','юпсилон'],['Z','цэт'],['Ä','э'],['Ö','ё'],['Ü','ю'],['ß','эс-цэт']];
 const TRICKY=['J','V','W','Y','Z','Ä','Ö','Ü','ß'];
-const READING_RULES=[
-{key:'w',label:'w',sound:'обычно звучит как русский «в»',words:[{word:'Wasser',ru:'вода'},{word:'wohnen',ru:'жить'},{word:'Wo',ru:'где'}],transfer:{word:'Was',ru:'что'}},
-{key:'v',label:'v',sound:'во многих знакомых словах звучит как «ф»',words:[{word:'vier',ru:'четыре'},{word:'vierzehn',ru:'четырнадцать'},{word:'vierzig',ru:'сорок'}],transfer:{word:'Vater',ru:'отец'}},
-{key:'z',label:'z',sound:'обычно звучит как «ц»',words:[{word:'zwei',ru:'два'},{word:'zehn',ru:'десять'},{word:'Zug',ru:'поезд'}],transfer:{word:'Zimmer',ru:'комната'}},
-{key:'j',label:'j',sound:'обычно звучит как «й»',words:[{word:'Ja',ru:'да'},{word:'Jahre',ru:'годы'},{word:'Juli',ru:'июль'}],transfer:{word:'jetzt',ru:'сейчас'}},
-{key:'sch',label:'sch',sound:'читается как «ш»',words:[{word:'Schule',ru:'школа'},{word:'schreiben',ru:'писать'},{word:'Schwester',ru:'сестра'}],transfer:{word:'Schuhe',ru:'обувь'}},
-{key:'ch-soft',label:'ch',sound:'после i/e часто звучит мягко',words:[{word:'ich',ru:'я'},{word:'nicht',ru:'не'},{word:'möchten',ru:'хотеть вежливо'}],transfer:{word:'richtig',ru:'правильно'}},
-{key:'ch-hard',label:'ch',sound:'после a/o/u/au звучит твёрже',words:[{word:'machen',ru:'делать'},{word:'brauchen',ru:'нуждаться'},{word:'auch',ru:'тоже'}],transfer:{word:'suchen',ru:'искать'}},
-{key:'ei',label:'ei',sound:'примерно «ай»',words:[{word:'heißen',ru:'называться'},{word:'Preis',ru:'цена'},{word:'drei',ru:'три'}],transfer:{word:'reisen',ru:'путешествовать'}},
-{key:'ie',label:'ie',sound:'долгое «и»',words:[{word:'Sie',ru:'Вы'},{word:'sieben',ru:'семь'},{word:'vier',ru:'четыре'}],transfer:{word:'wie',ru:'как'}},
-{key:'eu',label:'eu / äu',sound:'примерно «ой»',words:[{word:'heute',ru:'сегодня'},{word:'Freund',ru:'друг'},{word:'Deutsch',ru:'немецкий язык'}],transfer:{word:'neun',ru:'девять'}},
-{key:'sp',label:'sp',sound:'в начале слова примерно «шп»',words:[{word:'sprechen',ru:'говорить'},{word:'Sprachen',ru:'языки'},{word:'Sport',ru:'спорт'}],transfer:{word:'Spiel',ru:'игра'}},
-{key:'st',label:'st',sound:'в начале слова примерно «шт»',words:[{word:'Straße',ru:'улица'},{word:'Stadt',ru:'город'},{word:'stehen',ru:'стоять'}],transfer:{word:'Stunde',ru:'час'}},
-{key:'eszett',label:'ß',sound:'передаёт глухой звук «с»',words:[{word:'heißen',ru:'называться'},{word:'Straße',ru:'улица'},{word:'groß',ru:'большой'}],transfer:{word:'Fuß',ru:'нога / стопа'}},
-{key:'umlaut',label:'ä / ö / ü',sound:'это отдельные немецкие гласные',words:[{word:'Küche',ru:'кухня'},{word:'Prüfung',ru:'экзамен'},{word:'möchten',ru:'хотеть'}],transfer:{word:'müssen',ru:'быть должным'}},
-{key:'ending',label:'-e / -er',sound:'окончания слышны, но звучат слабее',words:[{word:'Aufgabe',ru:'задание'},{word:'Adresse',ru:'адрес'},{word:'Zimmer',ru:'комната'}],transfer:{word:'Wasser',ru:'вода'}}];
-const READING_CONTROL=[['Wasser','вода','w',true],['wohnen','жить','w',true],['vier','четыре','v',true],['zwei','два','z',true],['zehn','десять','z',true],['Ja','да','j',true],['Jahre','годы','j',true],['Schule','школа','sch',true],['schreiben','писать','sch',true],['ich','я','ch-soft',true],['nicht','не','ch-soft',true],['machen','делать','ch-hard',true],['brauchen','нуждаться','ch-hard',true],['heißen','называться','ei',true],['Preis','цена','ei',true],['Sie','Вы','ie',true],['sieben','семь','ie',true],['heute','сегодня','eu',true],['Freund','друг','eu',true],['sprechen','говорить','sp',true],['Straße','улица','st',false],['Prüfung','экзамен','umlaut',false],['Zug','поезд','z',false],['Zimmer','комната','z',false],['Deutsch','немецкий язык','eu',false],['möchten','хотеть','umlaut',false],['müssen','быть должным','umlaut',false],['Küche','кухня','umlaut',false],['Aufgabe','задание','ending',false],['Adresse','адрес','ending',false]].map(x=>({word:x[0],ru:x[1],rule:x[2],familiar:x[3]}));
+const READING_RULES=(window.OttoReadingRulesV15||[]).map(r=>({key:r.id,label:r.pattern,sound:r.answer,text:r.text,examples:[...(r.examples||[])]}));
+function coreWord(de){return String(de||'').replace(/^(der|die|das)\s+/i,'').trim()}
+function a1Words(){
+  const rows=window.OttoCourseDataV8?.allWords?.()||[];
+  const seen=new Set(),out=[];
+  for(const row of rows){
+    const word=coreWord(row?.de);
+    if(!word||word.length<2||word.length>28||/[\/();:]/.test(word)||word.split(/\s+/).length>1)continue;
+    const k=word.toLocaleLowerCase('de-DE');
+    if(seen.has(k))continue;seen.add(k);out.push({word,ru:String(row?.ru||'').trim()||'слово A1'})
+  }
+  return out
+}
+function ruleMatches(rule,word){
+  const w=String(word||'').toLocaleLowerCase('de-DE');
+  if(rule.key==='j')return /j/.test(w);
+  if(rule.key==='ei')return /ei/.test(w);
+  if(rule.key==='ie')return /ie/.test(w);
+  if(rule.key==='sch')return /sch/.test(w);
+  if(rule.key==='ichch')return /(i|e)ch/.test(w)||/^(ich|mich|nicht)$/.test(w);
+  if(rule.key==='achch')return /(a|o|u|au)ch/.test(w);
+  if(rule.key==='z')return /z/.test(w);
+  if(rule.key==='w')return /w/.test(w);
+  if(rule.key==='v')return /v/.test(w);
+  if(rule.key==='sp')return /^sp/.test(w);
+  if(rule.key==='st')return /^st/.test(w);
+  if(rule.key==='eu')return /(eu|äu)/.test(w);
+  if(rule.key==='ss')return /ß/.test(w);
+  if(rule.key==='umlaut')return /[äöü]/.test(w);
+  if(rule.key==='ending')return /(e|er)$/.test(w);
+  return false
+}
+function ruleBank(rule){
+  const all=a1Words(),by=new Map(all.map(x=>[x.word.toLocaleLowerCase('de-DE'),x]));
+  const out=[],seen=new Set();
+  const add=x=>{if(!x)return;const k=x.word.toLocaleLowerCase('de-DE');if(seen.has(k))return;seen.add(k);out.push(x)};
+  for(const ex of rule.examples||[])add(by.get(coreWord(ex).toLocaleLowerCase('de-DE')));
+  for(const row of all)if(ruleMatches(rule,row.word))add(row);
+  return out.slice(0,18)
+}
+function ruleWord(rule,index){const bank=ruleBank(rule);return bank.length?bank[Math.min(index,bank.length-1)]:{word:(rule.examples?.[0]||rule.label),ru:'слово A1'}}
+function ruleNeedle(rule,word){
+  const w=String(word||'');
+  if(rule.key==='ichch'||rule.key==='achch')return 'ch';
+  if(rule.key==='eu')return /äu/i.test(w)?'äu':'eu';
+  if(rule.key==='ss')return 'ß';
+  if(rule.key==='umlaut'){const m=w.match(/[äöü]/i);return m?.[0]||'ü'}
+  if(rule.key==='ending')return /er$/i.test(w)?'er':'e';
+  if(rule.key==='sp')return 'sp';
+  if(rule.key==='st')return 'st';
+  return rule.label
+}
+function maskRuleWord(word,rule){const needle=ruleNeedle(rule,word),i=String(word).toLocaleLowerCase('de-DE').indexOf(String(needle).toLocaleLowerCase('de-DE'));return i<0?word:String(word).slice(0,i)+'__'+String(word).slice(i+needle.length)}
+function distractorWords(rule,count=2){
+  const all=a1Words().filter(x=>!ruleMatches(rule,x.word));
+  return all.slice(0,count)
+}
+function buildReadingControl(){
+  const practiced=[],fresh=[],seen=new Set();
+  const add=(bucket,row,rule,familiar)=>{if(!row)return;const k=row.word.toLocaleLowerCase('de-DE');if(seen.has(k))return;seen.add(k);bucket.push({word:row.word,ru:row.ru,rule:rule.key,familiar})};
+  for(const rule of READING_RULES){const bank=ruleBank(rule);bank.slice(0,6).forEach(x=>add(practiced,x,rule,true))}
+  for(const rule of READING_RULES){const bank=ruleBank(rule);bank.slice(6).forEach(x=>add(fresh,x,rule,false))}
+  if(fresh.length<10){
+    for(const row of a1Words()){
+      const rule=READING_RULES.find(r=>ruleMatches(r,row.word));
+      if(rule)add(fresh,row,rule,false);
+      if(fresh.length>=10)break
+    }
+  }
+  return [...practiced.slice(0,20),...fresh.slice(0,10)].slice(0,30)
+}
+
 const ONES=['null','eins','zwei','drei','vier','fünf','sechs','sieben','acht','neun','zehn','elf','zwölf','dreizehn','vierzehn','fünfzehn','sechzehn','siebzehn','achtzehn','neunzehn'],TENS=['','','zwanzig','dreißig','vierzig','fünfzig','sechzig','siebzig','achtzig','neunzig'];
 function numberWord(n){n=Number(n);if(!Number.isInteger(n)||n<0||n>9999)return'';const u100=x=>x<20?ONES[x]:(x%10?(x%10===1?'ein':ONES[x%10])+'und'+TENS[Math.floor(x/10)]:TENS[Math.floor(x/10)]);const u1000=x=>x<100?u100(x):(Math.floor(x/100)===1?'einhundert':ONES[Math.floor(x/100)]+'hundert')+(x%100?u100(x%100):'');if(n<1000)return u1000(n);return (Math.floor(n/1000)===1?'eintausend':u1000(Math.floor(n/1000))+'tausend')+(n%1000?u1000(n%1000):'')}
 const NUMBER_CONTROL=[{type:'choice',spoken:'sieben',opts:['7','17','70'],ok:0,target:'7'},{type:'write',spoken:'vierzehn',target:'14'},{type:'speak',target:'9',expected:'neun'},{type:'choice',spoken:'siebzehn',opts:['17','70','77'],ok:0,target:'17'},{type:'speak',target:'20',expected:'zwanzig'},{type:'write',spoken:'dreißig',target:'30'},{type:'speak',target:'47',expected:'siebenundvierzig'},{type:'write',spoken:'achtundfünfzig',target:'58'},{type:'choice',spoken:'neunundsechzig',opts:['69','96','66'],ok:0,target:'69'},{type:'speak',target:'74',expected:'vierundsiebzig'},{type:'write',spoken:'sechsundachtzig',target:'86'},{type:'speak',target:'99',expected:'neunundneunzig'},{type:'write',spoken:'einhundertsiebenundzwanzig',target:'127'},{type:'speak',label:'Возраст',target:'34',expected:'vierunddreißig'},{type:'speak',label:'Номер дома',target:'12',expected:'zwölf'},{type:'write',label:'Почтовый индекс',spoken:'eins null eins eins fünf',target:'10115'},{type:'write',label:'Телефон',spoken:'null eins sieben sechs drei vier fünf',target:'0176345'},{type:'choice',label:'Время',spoken:'achtzehn',opts:['18:00','8:00','80:00'],ok:0,target:'18:00'}];
-function routePct(){let sum=0;const a=state.completed.includes('alphabet')?1:Math.min(1,(Number(state.alphaStep||0)+Number(state.alphaControlIndex||0)/8)/12),r=state.completed.includes('reading')?1:Math.min(1,(Math.max(0,Number(state.readingRule||0))*7+Number(state.readingPhase||0)+Number(state.readingControlIndex||0)/30)/(READING_RULES.length*7+1)),n=state.completed.includes('numbers')?1:Math.min(1,(Number(state.numberStep||0)+Number(state.numberControlIndex||0)/18)/13);sum=a+r+n;return Math.round(sum/14*100)}
+function routePct(){let sum=0;const a=state.completed.includes('alphabet')?1:Math.min(1,(Number(state.alphaStep||0)+Number(state.alphaControlIndex||0)/8)/12),r=state.completed.includes('reading')?1:Math.min(1,(Math.max(0,Number(state.readingRule||0))*10+Number(state.readingPhase||0)+Number(state.readingControlIndex||0)/30)/(READING_RULES.length*10+1)),n=state.completed.includes('numbers')?1:Math.min(1,(Number(state.numberStep||0)+Number(state.numberControlIndex||0)/18)/13);sum=a+r+n;return Math.round(sum/14*100)}
 function currentTopic(){if(!state.completed.includes('alphabet'))return 'Алфавит и произношение по буквам';if(!state.completed.includes('reading'))return 'Как читать немецкие слова';if(!state.completed.includes('numbers'))return 'Числа';return 'Существительные'}
 function continueAction(){if(!state.completed.includes('alphabet'))return 'BP.alphabet()';if(!state.completed.includes('reading'))return 'BP.reading()';if(!state.completed.includes('numbers'))return 'BP.numbers()';return 'BP.learn()'}
 function stats(){return {pct:routePct(),current:currentTopic(),sessions:Number(state.sessions||0),learned:state.learnedElements.length,errors:activeErrors().length,done:state.completed.length}}
