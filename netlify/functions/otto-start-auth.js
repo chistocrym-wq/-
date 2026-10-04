@@ -51,6 +51,24 @@ function otpKey(channel, login, purpose) { return `otp/${sha(`${channel}:${login
 function sessionKey(token) { return `session/${sha(token)}`; }
 function progressKey(userId) { return `progress/${userId}`; }
 
+
+const PREVIEW_TEST_USER_ID = 'preview-test-user';
+const PREVIEW_TEST_ACCOUNT_KEY = 'account/preview-test-user';
+function deployContext() {
+  try { return String(Netlify.context?.deploy?.context || ''); } catch { return ''; }
+}
+function requestHost(req) {
+  return String(req.headers.get('x-forwarded-host') || req.headers.get('host') || '').trim().toLowerCase();
+}
+function isDeployPreviewRequest(req) {
+  if (deployContext() !== 'deploy-preview') return false;
+  const host = requestHost(req).replace(/:\d+$/, '');
+  return /^deploy-preview-\d+--otto-start\.netlify\.app$/i.test(host);
+}
+function previewDenied() {
+  return json({ error: 'Not found' }, 404);
+}
+
 async function getJSON(key) {
   try { return await store().get(key, { type: 'json' }); } catch { return null; }
 }
@@ -230,6 +248,46 @@ async function login(body) {
   return json({ ok: true, session, user: { userId: account.userId, channel: account.channel, login: account.login, name: account.name || '' } });
 }
 
+
+async function previewLogin(req) {
+  if (!isDeployPreviewRequest(req)) return previewDenied();
+  let account = await getJSON(PREVIEW_TEST_ACCOUNT_KEY);
+  if (!account) {
+    account = {
+      key: PREVIEW_TEST_ACCOUNT_KEY,
+      userId: PREVIEW_TEST_USER_ID,
+      channel: 'preview',
+      login: PREVIEW_TEST_USER_ID,
+      name: 'Preview Tester',
+      previewTest: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    await store().setJSON(PREVIEW_TEST_ACCOUNT_KEY, account);
+  }
+  const session = await issueSession(account);
+  return json({
+    ok: true,
+    preview: true,
+    session,
+    user: {
+      userId: account.userId,
+      channel: account.channel,
+      login: account.login,
+      name: account.name,
+    },
+  });
+}
+
+async function previewReset(req, auth) {
+  if (!isDeployPreviewRequest(req)) return previewDenied();
+  if (!auth?.account?.previewTest || auth.account.userId !== PREVIEW_TEST_USER_ID) {
+    return json({ error: 'Forbidden' }, 403);
+  }
+  await store().delete(progressKey(PREVIEW_TEST_USER_ID)).catch(() => {});
+  return json({ ok: true, preview: true, onboardingCompleted: false });
+}
+
 async function resetPassword(body) {
   const channel = body.channel === 'phone' ? 'phone' : body.channel === 'email' ? 'email' : '';
   const login = normalize(channel, body.login);
@@ -259,6 +317,7 @@ export default async (req) => {
     if (action === 'register') return await register(body);
     if (action === 'login') return await login(body);
     if (action === 'reset') return await resetPassword(body);
+    if (action === 'preview-login') return await previewLogin(req);
 
     const auth = await requireSession(req);
     if (!auth) return json({ error: 'Сессия истекла. Войдите снова.' }, 401);
@@ -279,6 +338,7 @@ export default async (req) => {
       await store().setJSON(progressKey(auth.account.userId), record);
       return json({ ok: true, savedAt: record.savedAt });
     }
+    if (action === 'preview-reset') return await previewReset(req, auth);
     if (action === 'logout') {
       await store().delete(sessionKey(auth.token)).catch(() => {});
       return json({ ok: true });
