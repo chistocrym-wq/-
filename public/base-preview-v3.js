@@ -252,7 +252,7 @@ function alphaScreen(){
       '<div class="bp-note" style="margin-top:8px">Проверь написание. Если в твоих документах имя написано иначе — исправь его.</div>'+
       '<button class="bp-btn primary block" style="margin-top:10px" onclick="BP.saveFirstName()">Продолжить →</button>'+feedback()+'</div>';
   }
-  if(s===2){const v=state.firstName||'Julia';body+=titleCard('Теперь произнесём имя по буквам',v,'Сначала послушай немецкие названия букв, затем повтори сам(а).')+'<div class="bp-word">'+esc(v)+'</div>'+letterButtons(v)+'<div class="bp-row" style="margin-top:10px"><button class="bp-btn secondary" onclick="BP.playLetters(\''+esc(v)+'\')">🔊 Послушать целиком</button><button class="bp-btn primary" onclick="BP.alphaSpeakName()">🎤 Произнести по буквам</button></div>'+feedback()+'</div>'}
+  if(s===2){const v=state.firstName||'Julia';body+=titleCard('Теперь произнесём имя по буквам','Buchstabieren','Сначала послушай немецкие названия букв, затем повтори сам(а).')+'<div class="bp-word">'+esc(v)+'</div>'+letterButtons(v)+'<div class="bp-row" style="margin-top:10px"><button class="bp-btn secondary" onclick="BP.playLetters(\''+esc(v)+'\')">🔊 Послушать целиком</button><button class="bp-btn primary" onclick="BP.alphaSpeakName()">🎤 Произнести по буквам</button></div>'+feedback()+'</div>'}
   if(s===3){
     body+=titleCard('Теперь фамилия','Попробуем то же самое с фамилией.','Если пишешь кириллицей, OTTO предложит латинское написание. Его можно исправить по документам.')+
       '<label class="bp-kicker">Фамилия</label><input id="lastNameSource" class="bp-input" placeholder="Например: Петрова" oninput="BP.syncLatin(\'last\',this.value)" autocomplete="family-name">'+
@@ -260,10 +260,10 @@ function alphaScreen(){
       '<div class="bp-note" style="margin-top:8px">Проверь написание и при необходимости исправь его.</div>'+
       '<button class="bp-btn primary block" style="margin-top:10px" onclick="BP.saveLastName()">Продолжить →</button>'+feedback()+'</div>';
   }
-  if(s===4){const v=state.lastName||'Petrova';body+=titleCard('Произнеси фамилию по буквам',v,'Сначала послушай образец, затем повтори.')+'<div class="bp-word">'+esc(v)+'</div>'+letterButtons(v)+'<div class="bp-row" style="margin-top:10px"><button class="bp-btn secondary" onclick="BP.playLetters(\''+esc(v)+'\')">🔊 Послушать целиком</button><button class="bp-btn primary" onclick="BP.alphaSpeakSurname()">🎤 Произнести по буквам</button></div>'+feedback()+'</div>'}
+  if(s===4){const v=state.lastName||'Petrova';body+=titleCard('Произнеси фамилию по буквам','Buchstabieren','Сначала послушай образец, затем повтори.')+'<div class="bp-word">'+esc(v)+'</div>'+letterButtons(v)+'<div class="bp-row" style="margin-top:10px"><button class="bp-btn secondary" onclick="BP.playLetters(\''+esc(v)+'\')">🔊 Послушать целиком</button><button class="bp-btn primary" onclick="BP.alphaSpeakSurname()">🎤 Произнести по буквам</button></div>'+feedback()+'</div>'}
   if(s>=5&&s<=8){
     const idx=s-5,row=alphaPracticeWords()[idx],guided=idx<2;
-    body+=titleCard(guided?'Другие слова · сначала с образцом':'Теперь попробуй самостоятельно',row.word,guided?'Послушай, как OTTO произносит слово по буквам, затем повтори.':'Вспомни немецкие названия букв. Если забыл(а) — открой 🔤 Алфавит.')+
+    body+=titleCard(guided?'Другие слова · сначала с образцом':'Теперь попробуй самостоятельно',guided?'Послушай и повтори':'Произнеси по буквам',guided?'Послушай, как OTTO произносит слово по буквам, затем повтори.':'Вспомни немецкие названия букв. Если забыл(а) — открой 🔤 Алфавит.')+
       '<div class="bp-word">'+esc(row.word)+'</div>'+(guided?letterButtons(row.word)+'<button class="bp-btn secondary block" onclick="BP.playLetters(\''+esc(row.word)+'\')">🔊 Послушать по буквам</button>':'')+
       '<button class="bp-btn primary block" style="margin-top:8px" onclick="BP.alphaPracticeSpeak('+idx+')">🎤 Произнести по буквам</button>'+feedback()+'</div>';
   }
@@ -274,7 +274,7 @@ function alphaControlScreen(){
   const i=Number(state.alphaControlIndex||0),t=ALPHA_CONTROL[i];if(!t)return alphaResultScreen();
   const word=t.own==='first'?(state.firstName||'Julia'):t.own==='last'?(state.lastName||'Petrova'):t.word;
   let body=screenHead('Контрольная · Buchstabieren','Только навык произношения по буквам','BP.alphabet()')+lessonProgress('Контрольная',i,ALPHA_CONTROL.length);
-  body+=titleCard('Задание '+(i+1),'Произнеси по буквам: '+word,'Без предварительного образца. Если забыл(а) букву — можно открыть 🔤 Алфавит.')+'<div class="bp-word">'+esc(word)+'</div><button class="bp-btn primary block" onclick="BP.alphaControlSpeak(\''+esc(word)+'\')">🎤 Произнести по буквам</button>'+feedback()+'</div>';
+  body+=titleCard('Задание '+(i+1),'Произнеси по буквам','Без предварительного образца. Если забыл(а) букву — можно открыть 🔤 Алфавит.')+'<div class="bp-word">'+esc(word)+'</div><button class="bp-btn primary block" onclick="BP.alphaControlSpeak(\''+esc(word)+'\')">🎤 Произнести по буквам</button>'+feedback()+'</div>';
   body+=alphaLessonNav(i>0?'BP.alphaControlBack()':'','BP.alphaControlSkip()','BP.skipAlphabetTopic()');app(body,'learn')
 }
 function alphabetWeakLetters(){
