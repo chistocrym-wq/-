@@ -236,7 +236,7 @@
     const wrap=document.createElement('div');
     wrap.className='v12-modal-backdrop';
     wrap.dataset.v17SpeechModal='1';
-    wrap.innerHTML=`<section class="v12-modal" role="dialog" aria-modal="true"><div class="v12-modal-head"><b>Проверка произношения</b><button type="button" data-close>×</button></div><div class="v12-modal-body"><div class="v12-pron-target">${esc(expected)}</div><p class="v12-muted">1. Послушайте немецкий образец. 2. Запишите себя. 3. Обязательно прослушайте свою запись и сравните.</p>${hints.length?`<div class="v12-note"><b>Подсказка по чтению:</b> ${esc(hints.join(' '))}</div>`:''}<div class="v12-modal-actions"><button class="v12-btn secondary" type="button" data-listen>🔊 Послушать образец</button><button class="v12-btn primary" type="button" data-record>🎤 Записать себя</button></div><div data-result></div></div></section>`;
+    wrap.innerHTML=`<section class="v12-modal" role="dialog" aria-modal="true"><div class="v12-modal-head"><b>Проверка произношения</b><button type="button" data-close>×</button></div><div class="v12-modal-body"><div class="v12-pron-target">${esc(expected)}</div><p class="v12-muted">OTTO проверит произношение автоматически по вашей реальной записи. Прослушать свою запись можно дополнительно.</p>${hints.length?`<div class="v12-note"><b>Подсказка по чтению:</b> ${esc(hints.join(' '))}</div>`:''}<div class="v12-modal-actions"><button class="v12-btn secondary" type="button" data-listen>🔊 Послушать образец</button><button class="v12-btn primary" type="button" data-record>🎤 Записать себя</button></div><div data-result></div></div></section>`;
     const close=()=>{
       if(activeObjectUrl){try{URL.revokeObjectURL(activeObjectUrl)}catch{} activeObjectUrl='';}
       wrap.remove();
@@ -287,14 +287,6 @@
     audio.addEventListener('pause',()=>{if(audio.currentTime===0||audio.ended)button.textContent='▶ Прослушать мою запись'});
   }
 
-  function fallbackAssessment(expected, transcript) {
-    if(!transcript)return null;
-    const score=similarity(expected,transcript);
-    if(score>=0.84)return {status:'good',transcript,feedbackRu:'Фраза распознана близко к образцу.'};
-    if(score>=0.58)return {status:'slower',transcript,feedbackRu:'Очень близко. Повторите ещё раз чуть медленнее и чётче.'};
-    return {status:'retry',transcript,feedbackRu:'Распознанная фраза отличается от образца. Прослушайте образец и повторите ещё раз.'};
-  }
-
   async function check(expected, hints = []) {
     const clean=String(expected||'').trim();
     if(!clean)return;
@@ -328,17 +320,6 @@
         log('recorder-create-error-v17',{message:error?.message||String(error)},300);return;
       }
 
-      let transcript='';
-      const recognition=createRecognition();
-      if(recognition){
-        recognition.onresult=(event)=>{
-          const result=event.results?.[0];
-          const alternatives=Array.from(result||[]).map(x=>String(x.transcript||'')).filter(Boolean);
-          transcript=alternatives.sort((a,b)=>similarity(clean,b)-similarity(clean,a))[0]||'';
-        };
-        try{recognition.start()}catch{}
-      }
-
       const chunks=[];
       recorder.ondataavailable=(event)=>{if(event.data?.size)chunks.push(event.data)};
       box.innerHTML='<div class="v12-feedback listening"><b>● Идёт запись</b><br><span>Скажите слово или фразу. Затем нажмите «Остановить запись».</span><div style="margin-top:10px"><button class="v12-btn primary" type="button" data-stop>■ Остановить запись</button></div></div>';
@@ -349,7 +330,6 @@
       recorder.onstop=async()=>{
         clearTimeout(timer);
         stream.getTracks().forEach(t=>t.stop());
-        try{recognition?.stop?.()}catch{}
         if(!document.body.contains(wrap))return;
         const blob=new Blob(chunks,{type:recorder.mimeType||mime||'audio/webm'});
         if(blob.size<250){
@@ -358,24 +338,25 @@
         }
         if(activeObjectUrl){try{URL.revokeObjectURL(activeObjectUrl)}catch{}}
         activeObjectUrl=URL.createObjectURL(blob);
-        box.innerHTML=`${playbackHtml(activeObjectUrl)}<div class="v12-feedback good" data-check-status><b>✓ Запись готова.</b><p>Нажмите «Прослушать мою запись». Otto параллельно попробует проверить произношение.</p></div>`;
+        box.innerHTML=`${playbackHtml(activeObjectUrl)}<div class="v12-feedback" data-check-status><b>Проверяю произношение…</b><p>OTTO отправил реальную запись на автоматическую проверку.</p></div>`;
         bindOwnPlayback(box);
         recordButton.disabled=false;
         recordButton.textContent='🎤 Записать ещё раз';
         log('record-complete-v17',{message:clean,details:{bytes:blob.size,mime:blob.type}},300);
 
-        let payload=null;
-        try{payload=await serverPronunciation(blob,clean,hints)}catch(error){log('pronunciation-server-unavailable-v17',{message:error?.message||String(error),target:clean},500)}
+        let payload=null,technicalError=null;
+        try{payload=await serverPronunciation(blob,clean,hints)}catch(error){technicalError=error;log('pronunciation-server-unavailable-v17',{message:error?.message||String(error),target:clean},500)}
         if(!document.body.contains(wrap))return;
-        if(!payload) payload=fallbackAssessment(clean,transcript);
         const statusBox=box.querySelector('[data-check-status]');
         if(payload&&statusBox){
           const good=payload.status==='good',slower=payload.status==='slower';
           statusBox.className=`v12-feedback ${good?'good':'bad'}`;
-          statusBox.innerHTML=`<b>${good?'✓ Хорошо':slower?'Почти — повторите медленнее':'Повторите ещё раз'}</b><p>${esc(payload.feedbackRu||'')}</p>${payload.transcript?`<small>Отто услышал: <b>${esc(payload.transcript)}</b></small>`:''}`;
+          statusBox.innerHTML=`<b>${good?'✓ Отлично!':slower?'Почти — попробуйте ещё раз':'Попробуйте ещё раз'}</b><p>${esc(payload.feedbackRu||'')}</p>${payload.transcript?`<small>Отто услышал: <b>${esc(payload.transcript)}</b></small>`:''}`;
         }else if(statusBox){
-          statusBox.className='v12-feedback';
-          statusBox.innerHTML='<b>Запись сохранена и её можно прослушать.</b><p>Сравните свою запись с немецким образцом. Автоматическая оценка не мешает записи и воспроизведению.</p>';
+          statusBox.className='v12-feedback bad';
+          statusBox.removeAttribute('data-check-status');
+          statusBox.innerHTML='<b>Сейчас не удалось проверить произношение.</b><p>Попробуйте ещё раз. Это технический сбой и он не будет записан как ваша ошибка.</p>';
+          log('pronunciation-technical-result-v17',{message:technicalError?.message||'No pronunciation payload',target:clean},500);
         }
       };
 
