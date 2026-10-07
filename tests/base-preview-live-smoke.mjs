@@ -77,6 +77,14 @@ try{
   if(!s.onboardingCompleted)fail('onboardingCompleted not set');
   await saveCloud(page);
 
+  // A real micro-lesson must end with a compact result before the next lesson.
+  await page.evaluate(()=>window.__OTTO_BASE_PREVIEW_SET_STATE({screen:'alphabet',alphaStep:0,microResult:null}));
+  await page.getByRole('button',{name:/Начать практику/}).click();
+  await page.getByText('Микроурок завершён',{exact:true}).waitFor({timeout:5000});
+  if(!(await page.getByText('Теперь ты умеешь:',{exact:false}).count()))fail('Micro-lesson result does not explain the acquired skill');
+  await page.getByRole('button',{name:'Продолжить путь'}).click();
+  if(!(await page.getByText('Твоё имя',{exact:true}).count()))fail('Micro-lesson Continue did not open the next path node');
+
   // Real TTS click: require the actual Deploy Preview backend response.
   await page.evaluate(()=>window.__OTTO_BASE_PREVIEW_SET_STATE({screen:'alphabet',alphaStep:0}));
   const ttsWait=page.waitForResponse(r=>r.url().includes('/api/otto-tts')&&r.request().method()==='GET',{timeout:35000});
