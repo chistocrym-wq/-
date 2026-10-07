@@ -11,7 +11,7 @@ async function state(page){return page.evaluate(()=>window.__OTTO_BASE_PREVIEW_G
 async function saveCloud(page){const ok=await page.evaluate(()=>window.__OTTO_BASE_PREVIEW_SAVE_CLOUD());if(!ok)fail('save-progress failed')}
 async function previewLogin(page){
   await page.getByRole('button',{name:/Войти в тестовый аккаунт/}).click();
-  await page.waitForFunction(()=>/Привет! Я OTTO|Ваш прогресс|А это помнишь\?/.test(document.body.innerText),null,{timeout:12000});
+  await page.waitForFunction(()=>/Привет! Я OTTO|Где я сейчас\?|Учебная дорожка|А это помнишь\?/.test(document.body.innerText),null,{timeout:12000});
 }
 async function logout(page){
   if(!(await page.getByText('Профиль',{exact:true}).count())){
