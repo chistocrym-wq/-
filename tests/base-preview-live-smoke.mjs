@@ -30,8 +30,9 @@ async function resetThroughUi(page){
 }
 
 try{
-  browser=await chromium.launch({headless:true});
+  browser=await chromium.launch({headless:true,args:['--use-fake-device-for-media-stream','--use-fake-ui-for-media-stream']});
   const context=await browser.newContext({viewport:{width:390,height:844}});
+  await context.grantPermissions(['microphone'],{origin:base});
   const page=await context.newPage();
   page.on('pageerror',e=>fail('pageerror '+e.message));
 
@@ -75,6 +76,30 @@ try{
   s=await state(page);
   if(!s.onboardingCompleted)fail('onboardingCompleted not set');
   await saveCloud(page);
+
+  // Real TTS click: require the actual Deploy Preview backend response.
+  await page.evaluate(()=>window.__OTTO_BASE_PREVIEW_SET_STATE({screen:'alphabet',alphaStep:0}));
+  const ttsWait=page.waitForResponse(r=>r.url().includes('/api/otto-tts')&&r.request().method()==='GET',{timeout:35000});
+  await page.locator('.bp-alphabet-map .bp-token').first().click();
+  const ttsResponse=await ttsWait;
+  const ttsType=String(ttsResponse.headers()['content-type']||'');
+  if(ttsResponse.status()!==200||!ttsType.toLowerCase().includes('audio'))fail('Real TTS click failed: '+ttsResponse.status()+' '+ttsType);
+
+  // Real MediaRecorder path: synthetic browser microphone -> actual pronunciation POST.
+  await page.evaluate(()=>window.__OTTO_BASE_PREVIEW_SET_STATE({screen:'numbers',numberStep:2}));
+  await page.getByRole('button',{name:/Произнеси/}).click();
+  await page.locator('[data-v17-speech-modal]').waitFor({timeout:5000});
+  const pronWait=page.waitForResponse(r=>r.url().includes('/api/otto-start-pronunciation')&&r.request().method()==='POST',{timeout:30000});
+  await page.locator('[data-record]').click();
+  await page.locator('[data-stop]').waitFor({timeout:8000});
+  await page.waitForTimeout(900);
+  await page.locator('[data-stop]').click();
+  const pronResponse=await pronWait;
+  const pronRequest=pronResponse.request();
+  const pronPayload=JSON.parse(pronRequest.postData()||'{}');
+  if(String(pronPayload.audioBase64||'').length<300)fail('Pronunciation request did not contain a real recorded audio payload');
+  if(pronResponse.status()!==200)fail('Pronunciation backend returned HTTP '+pronResponse.status());
+  await page.locator('[data-v17-speech-modal] [data-close]').click().catch(()=>{});
 
   // Make two actual mistakes in the same numbers exercise.
   await page.evaluate(()=>window.__OTTO_BASE_PREVIEW_SET_STATE({screen:'numbers',numberStep:1,errors:[],retryCounts:{}}));
@@ -125,6 +150,11 @@ try{
     if(overflow)fail('Horizontal overflow at '+width+'px');
     await page.screenshot({path:'test-artifacts/base-preview-'+width+'.png',fullPage:true});
   }
+  await page.setViewportSize({width:1280,height:900});
+  await page.waitForTimeout(80);
+  const desktopOverflow=await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1);
+  if(desktopOverflow)fail('Horizontal overflow at desktop 1280px');
+  await page.screenshot({path:'test-artifacts/base-preview-desktop.png',fullPage:true});
 
   // Preview-only reset -> next login behaves as a new user again.
   await resetThroughUi(page);
