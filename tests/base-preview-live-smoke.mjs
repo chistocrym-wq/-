@@ -71,30 +71,31 @@ try{
 
   // Skip onboarding -> save flag to server.
   await page.getByRole('button',{name:'Пропустить инструкцию'}).click();
-  await page.getByText('Ваш прогресс',{exact:false}).waitFor({timeout:10000});
+  await page.waitForFunction(()=>/Где я сейчас\?|Учебная дорожка/.test(document.body.innerText),null,{timeout:10000});
   s=await state(page);
   if(!s.onboardingCompleted)fail('onboardingCompleted not set');
   await saveCloud(page);
 
-  // Make two actual mistakes so My Errors gets a server-persisted item.
-  await page.evaluate(()=>window.__OTTO_BASE_PREVIEW_SET_STATE({screen:'alphabet',alphaStep:8,errors:[],retryCounts:{}}));
-  let wrong=page.locator('.bp-option').first();
+  // Make two actual mistakes in the same numbers exercise.
+  await page.evaluate(()=>window.__OTTO_BASE_PREVIEW_SET_STATE({screen:'numbers',numberStep:1,errors:[],retryCounts:{}}));
+  let wrong=page.locator('.bp-option').nth(1);
   await wrong.click(); await page.waitForTimeout(550);
   if((await state(page)).errors.length)fail('First miss was stored too early');
-  wrong=page.locator('.bp-option').first();
+  await page.evaluate(()=>window.__OTTO_BASE_PREVIEW_SET_STATE({screen:'numbers',numberStep:1}));
+  wrong=page.locator('.bp-option').nth(1);
   await wrong.click(); await page.waitForTimeout(700);
   s=await state(page);
-  if(!s.errors.some(e=>e.id==='alpha-W'&&!e.resolved))fail('Repeated miss not stored in My Errors');
+  if(!s.errors.some(e=>e.id==='number-1'&&!e.resolved))fail('Repeated miss not stored in My Errors');
   await saveCloud(page);
   const signature=JSON.stringify({onboarding:s.onboardingCompleted,alphaStep:s.alphaStep,errors:s.errors.map(e=>({id:e.id,count:e.count,resolved:e.resolved}))});
 
   await page.evaluate(()=>window.BP.errors());
-  if(!(await page.getByText('W',{exact:true}).count()))fail('My Errors does not show W');
+  if(!(await page.getByText('Числа',{exact:true}).count()))fail('My Errors is not grouped by skill');
 
   // Logout -> same server test account -> no onboarding, progress restored.
   await logout(page);
   await previewLogin(page);
-  await page.getByText('Ваш прогресс',{exact:false}).waitFor({timeout:10000});
+  await page.waitForFunction(()=>/Где я сейчас\?|Учебная дорожка/.test(document.body.innerText),null,{timeout:10000});
   s=await state(page);
   if(s.screen==='onboarding'||!s.onboardingCompleted)fail('Onboarding returned automatically on second login');
   const restored=JSON.stringify({onboarding:s.onboardingCompleted,alphaStep:s.alphaStep,errors:s.errors.map(e=>({id:e.id,count:e.count,resolved:e.resolved}))});
@@ -111,6 +112,19 @@ try{
   s=await state(page);
   const after=JSON.stringify({alphaStep:s.alphaStep,errors:s.errors,completed:s.completed,learned:s.learnedElements});
   if(after!==before)fail('Manual tutorial replay reset progress');
+
+  // The new path must expose micro-lessons and remain mobile-safe.
+  await page.evaluate(()=>window.BP.learn());
+  for(const marker of ['Моё имя','Моя фамилия','Другие слова по буквам','Проверка Buchstabieren','Числа 0–10','Составные числа','Checkpoint по числам']){
+    if(!(await page.getByText(marker,{exact:false}).count()))fail('Missing micro-lesson: '+marker);
+  }
+  for(const width of [320,330,360,375,390,430,520]){
+    await page.setViewportSize({width,height:844});
+    await page.waitForTimeout(80);
+    const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+1);
+    if(overflow)fail('Horizontal overflow at '+width+'px');
+    await page.screenshot({path:'test-artifacts/base-preview-'+width+'.png',fullPage:true});
+  }
 
   // Preview-only reset -> next login behaves as a new user again.
   await resetThroughUi(page);
